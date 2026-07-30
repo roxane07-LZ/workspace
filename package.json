@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node server.js",
     "build": "node scripts/build-vercel.js",
-"vercel-build": "node scripts/build-vercel.js",
+    "vercel-build": "node scripts/build-vercel.js",
     "dist:win": "electron-builder --win --x64",
     "dist:mac": "electron-builder --mac",
     "cap:init": "cap init",

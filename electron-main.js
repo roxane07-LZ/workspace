@@ -1,8 +1,3 @@
-/* 云端（Vercel）无 Electron 环境，直接安全退出，避免 Serverless 打包/运行时崩溃 */
-if (process.env.VERCEL || !process.versions.electron) {
-  module.exports = {};
-  return;
-}
 /* ============================================================
  * 极简业务工作台 · Electron 主进程（打包成 Windows EXE 用）
  * 职责：
@@ -10,6 +5,12 @@ if (process.env.VERCEL || !process.versions.electron) {
  *   2. 打开一个只加载该地址的窗口，体验等同 App
  * 依赖：npm i electron electron-builder 后，npm run dist:win 产出安装包
  * ============================================================ */
+/* 云端（Vercel）无 Electron 环境，直接安全退出，避免 Serverless 打包/运行时崩溃 */
+if (process.env.VERCEL || !process.versions.electron) {
+  module.exports = {};
+  return;
+}
+
 const { app, BrowserWindow } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
