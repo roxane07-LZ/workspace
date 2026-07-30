@@ -1,13 +1,10 @@
 {
   "version": 2,
   "functions": {
-    "api/index.js": {
-      "maxDuration": 60,
-      "includeFiles": "server.js"
-    }
+    "api/index.js": { "maxDuration": 60 }
   },
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index.js" },
-    { "source": "/", "destination": "/%E6%9E%81%E7%AE%80%E4%B8%9A%E5%8A%A1%E5%B7%A5%E4%BD%9C%E5%8F%B0.html" }
+    { "source": "/", "destination": "/index.html" }
   ]
 }
