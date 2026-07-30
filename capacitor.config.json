@@ -1,0 +1,9 @@
+{
+  "appId": "com.workbuddy.desk",
+  "appName": "极简业务工作台",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https",
+    "url": "https://把这里换成你的云端地址.onrender.com"
+  }
+}

@@ -1,0 +1,14 @@
+# Render Blueprint 配置（可选）
+# 更简单的方式：直接在 Render 网页里手动建 Web Service，填下面的 Build/Start 命令即可，
+# 不用这个文件也行。这个文件用于「一键部署」按钮场景。
+services:
+  - type: web
+    name: jimian-workbench
+    runtime: node
+    plan: free
+    buildCommand: "npm install --omit=dev"
+    startCommand: "node server.js"
+    healthCheckPath: /api/ping
+    envVars:
+      - key: NODE_VERSION
+        value: "20"

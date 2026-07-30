@@ -1,0 +1,15 @@
+{
+  "name": "极简业务工作台",
+  "short_name": "工作台",
+  "description": "计划·日程·客户·账单·锻炼·音乐·B站 一体化业务工作台",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fafafa",
+  "theme_color": "#111111",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
