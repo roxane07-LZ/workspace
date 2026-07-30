@@ -23,5 +23,5 @@ if "%NODE_EXE%"=="" (
   exit /b
 )
 
-"%NODE_EXE%" server.js
+"%NODE_EXE%" server-local.js
 pause
