@@ -1,5 +1,3 @@
-// Vercel Serverless Function 入口
-// 复用 server.js 的路由逻辑。Vercel 构建时会通过 npm run build 把 server.js 复制到 api/server.js
 let serverCore;
 try { serverCore = require('./server.js'); }          // Vercel 构建后：server.js 被复制到 api/ 目录
 catch (err) { serverCore = require('../server.js'); }  // 本地开发：server.js 在父目录
