@@ -1,3 +1,8 @@
+/* 云端（Vercel）无 Electron 环境，直接安全退出，避免 Serverless 打包/运行时崩溃 */
+if (process.env.VERCEL || !process.versions.electron) {
+  module.exports = {};
+  return;
+}
 /* ============================================================
  * 极简业务工作台 · Electron 主进程（打包成 Windows EXE 用）
  * 职责：
