@@ -1,51 +1,8 @@
 {
-  "name": "minimal-biz-workbench",
+  "name": "workbench-vercel",
   "version": "1.0.0",
-  "description": "极简业务工作台 · 计划/客户/账单/锻炼/音乐/B站 一体化，支持云端同步、EXE 与安卓 APK",
-  "main": "electron-main.js",
   "private": true,
   "engines": {
     "node": ">=18"
-  },
-  "scripts": {
-    "start": "node server.js",
-    "build": "node scripts/build-vercel.js",
-    "vercel-build": "node scripts/build-vercel.js",
-    "dist:win": "electron-builder --win --x64",
-    "dist:mac": "electron-builder --mac",
-    "cap:init": "cap init",
-    "cap:add:android": "cap add android",
-    "cap:sync": "cap sync",
-    "cap:build:android": "cap build android"
-  },
-  "build": {
-    "appId": "com.workbuddy.desk",
-    "productName": "极简业务工作台",
-    "files": [
-      "极简业务工作台.html",
-      "server.js",
-      "sync-config.js",
-      "manifest.webmanifest",
-      "sw.js",
-      "icon.svg",
-      "electron-main.js"
-    ],
-    "directories": { "output": "dist" },
-    "win": {
-      "target": "nsis",
-      "artifactName": "极简业务工作台-${version}-setup.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true
-    }
-  },
-  "devDependencies": {
-    "electron": "^31.0.0",
-    "electron-builder": "^24.13.3",
-    "@capacitor/cli": "^6.1.0",
-    "@capacitor/core": "^6.1.0",
-    "@capacitor/android": "^6.1.0"
   }
 }
