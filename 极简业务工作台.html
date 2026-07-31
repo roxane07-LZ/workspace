@@ -50,13 +50,31 @@ h3{font-size:15px;margin:10px 0 8px}
 .muted{color:var(--sub);font-size:12px}
 /* ===== 整体布局 ===== */
 #app{display:flex;height:100vh;overflow:hidden}
-aside{width:190px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px;gap:4px;flex-shrink:0}
-aside .logo{font-size:17px;font-weight:700;letter-spacing:1px;margin-bottom:14px;padding-left:8px}
-aside .nav{flex:1;overflow-y:auto}
-aside .nav button{display:block;width:100%;text-align:left;border:none;background:none;padding:9px 10px;border-radius:8px;font-size:14px;color:#444;margin-bottom:2px}
+aside{width:190px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px;gap:4px;flex-shrink:0;transition:width .2s ease,padding .2s ease}
+.sidebar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-left:8px;gap:6px}
+aside .logo{font-size:17px;font-weight:700;letter-spacing:1px;white-space:nowrap;overflow:hidden}
+#sidebarToggle{width:28px;height:28px;padding:0;border:1px solid var(--line);background:#fff;border-radius:6px;color:var(--sub);font-size:12px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.15s}
+#sidebarToggle:hover{border-color:var(--ink);color:var(--ink);background:#f2f2f2}
+aside .nav{flex:1;overflow-y:auto;overflow-x:hidden}
+aside .nav button{display:block;width:100%;text-align:left;border:none;background:none;padding:9px 10px;border-radius:8px;font-size:14px;color:#444;margin-bottom:2px;white-space:nowrap;overflow:hidden}
+aside .nav button .icon{font-size:16px;margin-right:8px}
+aside .nav button .label{}
 aside .nav button:hover{background:#f2f2f2;color:var(--ink)}
 aside .nav button.act{background:var(--ink);color:#fff}
-#focusBtn{margin-top:8px;border:1px dashed var(--ink);border-radius:8px;padding:10px;font-weight:600}
+#focusBtn{margin-top:8px;border:1px dashed var(--ink);border-radius:8px;padding:10px;font-weight:600;white-space:nowrap;overflow:hidden}
+
+/* 侧边栏收缩状态 */
+aside.collapsed{width:64px;padding:14px 8px;align-items:center}
+aside.collapsed .sidebar-header{padding-left:0;justify-content:center}
+aside.collapsed .logo .label{display:none}
+aside.collapsed .logo .icon{font-size:18px}
+aside.collapsed #sidebarToggle{transform:rotate(180deg)}
+aside.collapsed .nav button{text-align:center;padding:10px 0}
+aside.collapsed .nav button .icon{margin-right:0;font-size:20px}
+aside.collapsed .nav button .label{display:none}
+aside.collapsed #focusBtn{border:none;padding:10px 0;text-align:center}
+aside.collapsed #focusBtn .label{display:none}
+aside.collapsed #focusBtn .icon{font-size:20px;display:inline}
 main{flex:1;display:flex;flex-direction:column;overflow:hidden}
 header{background:#fff;border-bottom:1px solid var(--line);padding:10px 22px;display:flex;align-items:center;gap:14px}
 #gSearch{flex:1;max-width:520px;position:relative}
@@ -129,26 +147,29 @@ canvas.chart{width:100%;height:240px;background:#fff}
 #gResult mark{background:#111;color:#fff;padding:0 2px;border-radius:2px}
 /* ===== 备忘录 ===== */
 .memo{border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff;margin-bottom:8px;white-space:pre-wrap;font-size:13px}
-@media(max-width:800px){#app{flex-direction:column}aside{width:100%;flex-direction:row;overflow-x:auto}.grid2{grid-template-columns:1fr}}
+@media(max-width:800px){#app{flex-direction:column}aside{width:100%!important;flex-direction:row;overflow-x:auto;padding:12px;gap:6px}.sidebar-header{display:none}aside .nav{display:flex;flex-direction:row;gap:4px;overflow-x:auto;overflow-y:hidden}aside .nav button{width:auto;white-space:nowrap;padding:8px 10px;margin-bottom:0}aside .nav button .label{display:inline}aside .nav button .icon{margin-right:6px}#focusBtn{display:none}.grid2{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div id="app">
   <!-- ===================== 左侧导航 ===================== -->
   <aside>
-    <div class="logo">◼ 工作台</div>
-    <div class="nav" id="nav">
-      <button data-p="plan" class="act">📅 计划 · 日程</button>
-      <button data-p="customer">👥 客户管理</button>
-      <button data-p="bill">💰 账单记账</button>
-      <button data-p="fit">🏃 锻炼 · 体重</button>
-      <button data-p="music">🎵 音乐</button>
-      <button data-p="bili">📺 哔哩哔哩</button>
-      <button data-p="file">📄 文件 · 笔记</button>
-      <button data-p="tool">🧰 小工具</button>
-      <button data-p="set">⚙️ 数据 · 设置</button>
+    <div class="sidebar-header">
+      <div class="logo"><span class="icon">◼</span><span class="label">工作台</span></div>
+      <button id="sidebarToggle" onclick="toggleSidebar()" title="收起/展开侧边栏">◀</button>
     </div>
-    <button id="focusBtn" onclick="Focus.open()">🎯 专注模式</button>
+    <div class="nav" id="nav">
+      <button data-p="plan" class="act"><span class="icon">📅</span><span class="label">计划 · 日程</span></button>
+      <button data-p="customer"><span class="icon">👥</span><span class="label">客户管理</span></button>
+      <button data-p="bill"><span class="icon">💰</span><span class="label">账单记账</span></button>
+      <button data-p="fit"><span class="icon">🏃</span><span class="label">锻炼 · 体重</span></button>
+      <button data-p="music"><span class="icon">🎵</span><span class="label">音乐</span></button>
+      <button data-p="bili"><span class="icon">📺</span><span class="label">哔哩哔哩</span></button>
+      <button data-p="file"><span class="icon">📄</span><span class="label">文件 · 笔记</span></button>
+      <button data-p="tool"><span class="icon">🧰</span><span class="label">小工具</span></button>
+      <button data-p="set"><span class="icon">⚙️</span><span class="label">数据 · 设置</span></button>
+    </div>
+    <button id="focusBtn" onclick="Focus.open()"><span class="icon">🎯</span><span class="label">专注模式</span></button>
   </aside>
 
   <main>
@@ -651,6 +672,24 @@ document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.p
 function go(p){document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('act',x.dataset.p===p));
   document.querySelectorAll('.page').forEach(x=>x.classList.toggle('act',x.id==='page-'+p));}
 setInterval(()=>{const n=new Date();$('clock').textContent=n.toLocaleDateString('zh-CN',{weekday:'short'})+' '+n.toLocaleString('zh-CN');},1000);
+
+/* 侧边栏收起/展开 */
+function initSidebar(){
+  const a=document.querySelector('aside');
+  const btn=document.getElementById('sidebarToggle');
+  if(!a||!btn)return;
+  if(localStorage.getItem('sidebarCollapsed')==='1') a.classList.add('collapsed');
+  btn.textContent=a.classList.contains('collapsed')?'▶':'◀';
+}
+function toggleSidebar(){
+  const a=document.querySelector('aside');
+  a.classList.toggle('collapsed');
+  const collapsed=a.classList.contains('collapsed');
+  localStorage.setItem('sidebarCollapsed', collapsed?'1':'0');
+  const btn=document.getElementById('sidebarToggle');
+  if(btn) btn.textContent=collapsed?'▶':'◀';
+}
+window.addEventListener('DOMContentLoaded', initSidebar);
 
 /* ============================================================
    ★ 模块一：计划（卡片 + 分类 + 完成状态）
