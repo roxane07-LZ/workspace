@@ -1350,7 +1350,7 @@ const Sync={
     try{
       const r=await fetch('/api/sb/auth/v1/settings');
       const t=await r.text();
-      if(box) box.textContent='连接结果：HTTP '+r.status+(r.status<400?' ✅ 云端代理正常，可正常登录/注册':' ⚠ 代理返回异常（见控制台）');
+      if(box) box.textContent='连接结果：HTTP '+r.status+(r.status<400?' ✅ 云端代理正常，可正常登录/注册':' ⚠ '+t.slice(0,160));
       console.log('[sync] /api/sb/auth/v1/settings →', r.status, t);
     }catch(e){
       if(box) box.textContent='连接失败：'+e.message+'（说明浏览器连不上 /api/sb 代理，多半是部署未更新或网络问题）';
