@@ -2,7 +2,15 @@
 
 
 
+
+
+
+
  * Vercel Serverless Function · 完全自包含版
+
+
+
+
 
 
 
@@ -10,7 +18,15 @@
 
 
 
+
+
+
+
  * 首页 / 自动 302 到仓库里的静态 HTML，避免读云上不存在的本地文件。
+
+
+
+
 
 
 
@@ -18,7 +34,15 @@
 
 
 
+
+
+
+
  * ============================================================ */
+
+
+
+
 
 
 
@@ -30,7 +54,19 @@
 
 
 
+
+
+
+
+
+
+
+
 const http = require('http');
+
+
+
+
 
 
 
@@ -42,11 +78,27 @@ const https = require('https');
 
 
 
+
+
+
+
+
+
+
+
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 
 
+
+
+
+
 const NE_HEAD = { 'User-Agent': UA, Referer: 'https://music.163.com/', Origin: 'https://music.163.com', Cookie: 'appver=8.7.01; os=pc' };
+
+
+
+
 
 
 
@@ -58,7 +110,19 @@ let biliCookie = '';
 
 
 
+
+
+
+
+
+
+
+
 /* ---------- 底层：抓取为字符串 ---------- */
+
+
+
+
 
 
 
@@ -66,7 +130,15 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
   return new Promise((resolve, reject) => {
+
+
+
+
 
 
 
@@ -74,7 +146,15 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
     const mod = u.protocol === 'http:' ? http : https;
+
+
+
+
 
 
 
@@ -82,7 +162,15 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
       hostname: u.hostname, port: u.port || (u.protocol === 'http:' ? 80 : 443),
+
+
+
+
 
 
 
@@ -90,7 +178,15 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
       headers: Object.assign({ 'User-Agent': UA }, opts.headers || {})
+
+
+
+
 
 
 
@@ -98,7 +194,15 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
       const chunks = [];
+
+
+
+
 
 
 
@@ -106,7 +210,15 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
       resp.on('end', () => resolve({ status: resp.statusCode, headers: resp.headers, body: Buffer.concat(chunks).toString('utf8') }));
+
+
+
+
 
 
 
@@ -114,7 +226,15 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
     r.on('error', reject);
+
+
+
+
 
 
 
@@ -122,7 +242,15 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
     if (opts.body) r.write(opts.body);
+
+
+
+
 
 
 
@@ -130,11 +258,27 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
   });
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -146,7 +290,15 @@ function fetchText(target, opts = {}) {
 
 
 
+
+
+
+
 function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
+
+
+
+
 
 
 
@@ -154,7 +306,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
   let u;
+
+
+
+
 
 
 
@@ -162,7 +322,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
   const mod = u.protocol === 'http:' ? http : https;
+
+
+
+
 
 
 
@@ -170,7 +338,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
   if (cliReq.headers.range) head.Range = cliReq.headers.range;
+
+
+
+
 
 
 
@@ -178,7 +354,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
     hostname: u.hostname, port: u.port || (u.protocol === 'http:' ? 80 : 443),
+
+
+
+
 
 
 
@@ -186,7 +370,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
   }, resp => {
+
+
+
+
 
 
 
@@ -194,7 +386,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
       resp.resume();
+
+
+
+
 
 
 
@@ -202,7 +402,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -210,7 +418,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
     ['content-type', 'content-length', 'content-range', 'cache-control'].forEach(k => { if (resp.headers[k]) h[k] = resp.headers[k]; });
+
+
+
+
 
 
 
@@ -218,7 +434,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
     resp.pipe(cliRes);
+
+
+
+
 
 
 
@@ -226,7 +450,15 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
   r.on('error', e => { if (!cliRes.headersSent) cliRes.writeHead(502); cliRes.end('上游错误: ' + e.message); });
+
+
+
+
 
 
 
@@ -234,11 +466,27 @@ function pipeProxy(target, cliReq, cliRes, extraHead = {}, depth = 0) {
 
 
 
+
+
+
+
   r.end();
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -250,11 +498,23 @@ const json = (res, obj, code = 200) => {
 
 
 
+
+
+
+
   res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
 
 
 
+
+
+
+
   res.end(JSON.stringify(obj));
+
+
+
+
 
 
 
@@ -266,13 +526,31 @@ const json = (res, obj, code = 200) => {
 
 
 
+
+
+
+
+
+
+
+
 /* ---------- Supabase 代理：客户端只连同源 vercel.app，由 Vercel 服务端连 supabase.co ---------- */
+
+
+
+
 
 
 
 const SB_ORIGIN = 'https://toyiugcylrxtvspgblcf.supabase.co';
 
+
+
 const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRveWl1cWN5bHJ4dHZzcGdibGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0NzEyMzEsImV4cCI6MjEwMTA0NzIzMX0.Qenww2lEZFJLMxhlOCdFyv179ujAjWhtMQ6h8iqBY60';
+
+
+
+
 
 
 
@@ -280,7 +558,15 @@ async function sbProxy(req, res, target) {
 
 
 
+
+
+
+
   try {
+
+
+
+
 
 
 
@@ -288,7 +574,15 @@ async function sbProxy(req, res, target) {
 
 
 
+
+
+
+
     let body;
+
+
+
+
 
 
 
@@ -296,7 +590,15 @@ async function sbProxy(req, res, target) {
 
 
 
+
+
+
+
       const chunks = [];
+
+
+
+
 
 
 
@@ -304,33 +606,67 @@ async function sbProxy(req, res, target) {
 
 
 
+
+
+
+
       body = Buffer.concat(chunks);
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
     const pass = {};
 
+
+
     for (const k of ['authorization','apikey','content-type','accept','prefer','x-client-info']) {
+
+
 
       const v = req.headers[k];
 
+
+
       if (v) pass[k] = Array.isArray(v) ? v[0] : v;
+
+
 
     }
 
+
+
     pass['user-agent'] = UA;
+
+
 
     const ctrl = new AbortController();
 
+
+
     const timer = setTimeout(() => ctrl.abort(), 12000);
+
+
 
     const upstream = await fetch(target, { method, headers: pass, body, redirect: 'follow', signal: ctrl.signal });
 
+
+
     clearTimeout(timer);
+
+
+
+
 
 
 
@@ -338,7 +674,15 @@ async function sbProxy(req, res, target) {
 
 
 
+
+
+
+
     const out = { 'Access-Control-Allow-Origin': '*' };
+
+
+
+
 
 
 
@@ -346,7 +690,15 @@ async function sbProxy(req, res, target) {
 
 
 
+
+
+
+
     const cl = upstream.headers.get('content-length'); if (cl) out['content-length'] = cl;
+
+
+
+
 
 
 
@@ -354,7 +706,15 @@ async function sbProxy(req, res, target) {
 
 
 
+
+
+
+
     res.end(buf);
+
+
+
+
 
 
 
@@ -362,7 +722,15 @@ async function sbProxy(req, res, target) {
 
 
 
+
+
+
+
     if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
+
+
+
+
 
 
 
@@ -370,11 +738,27 @@ async function sbProxy(req, res, target) {
 
 
 
+
+
+
+
   }
 
 
 
+
+
+
+
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -390,7 +774,19 @@ const BI_HEAD = () => ({ 'User-Agent': UA, Referer: 'https://www.bilibili.com/',
 
 
 
+
+
+
+
+
+
+
+
 /* ============================================================
+
+
+
+
 
 
 
@@ -398,11 +794,23 @@ const BI_HEAD = () => ({ 'User-Agent': UA, Referer: 'https://www.bilibili.com/',
 
 
 
+
+
+
+
  * ============================================================ */
 
 
 
+
+
+
+
 async function route(req, res, u) {
+
+
+
+
 
 
 
@@ -414,7 +822,19 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
+
+
+
+
   /* ========== 网易云音乐 ========== */
+
+
+
+
 
 
 
@@ -422,7 +842,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const kw = q.get('kw') || '', limit = q.get('limit') || 30;
+
+
+
+
 
 
 
@@ -430,7 +858,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const j = JSON.parse(r.body);
+
+
+
+
 
 
 
@@ -438,7 +874,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       neid: s.id, title: s.name,
+
+
+
+
 
 
 
@@ -446,7 +890,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       album: (s.album || s.al || {}).name || '',
+
+
+
+
 
 
 
@@ -454,7 +906,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       dt: s.duration || s.dt || 0
+
+
+
+
 
 
 
@@ -462,7 +922,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     if (songs.length && !songs[0].cover) {
+
+
+
+
 
 
 
@@ -470,7 +938,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
         const d = await fetchText(`https://music.163.com/api/song/detail?ids=[${songs.map(s => s.neid).join(',')}]`, { headers: NE_HEAD });
+
+
+
+
 
 
 
@@ -478,7 +954,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
         const map = {};
+
+
+
+
 
 
 
@@ -486,7 +970,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
         songs.forEach(s => { if (map[s.neid]) s.cover = map[s.neid]; });
+
+
+
+
 
 
 
@@ -494,7 +986,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -502,7 +1002,19 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -514,7 +1026,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const raw = (q.get('id') || '').trim();
+
+
+
+
 
 
 
@@ -522,7 +1042,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       || (raw.match(/playlist\/(\d+)/) || [])[1]
+
+
+
+
 
 
 
@@ -530,7 +1058,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       || (raw.match(/(\d{6,})/) || [])[1];
+
+
+
+
 
 
 
@@ -538,7 +1074,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const r = await fetchText(`https://music.163.com/api/v6/playlist/detail?id=${id}&n=1000&s=0`,
+
+
+
+
 
 
 
@@ -546,7 +1090,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const j = JSON.parse(r.body);
+
+
+
+
 
 
 
@@ -554,7 +1106,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const tracks = (j.playlist.tracks || []).map(s => ({
+
+
+
+
 
 
 
@@ -562,7 +1122,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       artist: (s.ar || s.artists || []).map(a => a.name).join(' / '),
+
+
+
+
 
 
 
@@ -570,7 +1138,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       cover: (s.al || s.album || {}).picUrl || '', dt: s.dt || 0
+
+
+
+
 
 
 
@@ -578,11 +1154,27 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     return json(res, { ok: true, name: j.playlist.name, cover: j.playlist.coverImgUrl, total: j.playlist.trackCount, tracks });
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -594,7 +1186,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const r = await fetchText(`https://music.163.com/api/song/lyric?id=${q.get('id')}&lv=-1&kv=-1&tv=-1`, { headers: NE_HEAD });
+
+
+
+
 
 
 
@@ -602,11 +1202,27 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     return json(res, { ok: true, lyric: (j.lrc && j.lrc.lyric) || '', trans: (j.tlyric && j.tlyric.lyric) || '' });
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -618,7 +1234,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const id = q.get('id');
+
+
+
+
 
 
 
@@ -626,7 +1250,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     try {
+
+
+
+
 
 
 
@@ -634,7 +1266,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       const d = (JSON.parse(e.body).data || [])[0];
+
+
+
+
 
 
 
@@ -642,7 +1282,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     } catch (err) { }
+
+
+
+
 
 
 
@@ -650,11 +1298,27 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     return pipeProxy(src, req, res, { Referer: 'https://music.163.com/' });
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -666,7 +1330,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   if (p === '/api/bili/qr') {
+
+
+
+
 
 
 
@@ -674,7 +1346,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const j = JSON.parse(r.body);
+
+
+
+
 
 
 
@@ -682,11 +1362,27 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     return json(res, { ok: true, key: j.data.qrcode_key, url: j.data.url });
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -698,7 +1394,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const r = await fetchText('https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key=' + encodeURIComponent(q.get('key') || ''),
+
+
+
+
 
 
 
@@ -706,7 +1410,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const j = JSON.parse(r.body);
+
+
+
+
 
 
 
@@ -714,7 +1426,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     if (st === 0) {
+
+
+
+
 
 
 
@@ -722,7 +1442,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       const ck = sc.map(s => s.split(';')[0]).join('; ');
+
+
+
+
 
 
 
@@ -730,7 +1458,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       return json(res, { ok: true, state: 'done', msg: '登录成功' });
+
+
+
+
 
 
 
@@ -738,7 +1474,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const map = { 86101: '等待扫码', 86090: '已扫码，请在手机上确认', 86038: '二维码已失效，请刷新' };
+
+
+
+
 
 
 
@@ -746,7 +1490,19 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -758,7 +1514,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const ck = q.get('v') || '';
+
+
+
+
 
 
 
@@ -766,11 +1530,27 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     return json(res, { ok: true });
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -786,7 +1566,19 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
+
+
+
+
   if (p === '/api/bili/nav') {
+
+
+
+
 
 
 
@@ -794,7 +1586,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const r = await fetchText('https://api.bilibili.com/x/web-interface/nav', { headers: BI_HEAD() });
+
+
+
+
 
 
 
@@ -802,7 +1602,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     if (j.code !== 0) return json(res, { ok: true, login: false });
+
+
+
+
 
 
 
@@ -810,7 +1618,19 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -822,7 +1642,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const mid = q.get('mid');
+
+
+
+
 
 
 
@@ -830,7 +1658,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const r = await fetchText(`https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid=${mid}`, { headers: BI_HEAD() });
+
+
+
+
 
 
 
@@ -838,7 +1674,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     if (j.code !== 0) return json(res, { ok: false, msg: j.message });
+
+
+
+
 
 
 
@@ -846,7 +1690,19 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -858,7 +1714,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const r = await fetchText(`https://api.bilibili.com/x/v3/fav/resource/list?media_id=${q.get('id')}&ps=${q.get('ps') || 40}&pn=${q.get('pn') || 1}&order=mtime&platform=web`, { headers: BI_HEAD() });
+
+
+
+
 
 
 
@@ -866,7 +1730,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     if (j.code !== 0) return json(res, { ok: false, msg: j.message + '（收藏夹可能为私密，请先扫码登录）' });
+
+
+
+
 
 
 
@@ -874,7 +1746,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const medias = j.data.medias || [];
+
+
+
+
 
 
 
@@ -882,7 +1762,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       ok: true, hasMore: !!j.data.has_more,
+
+
+
+
 
 
 
@@ -890,11 +1778,27 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     });
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -906,7 +1810,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const r = await fetchText('https://api.bilibili.com/x/web-interface/view?bvid=' + encodeURIComponent(q.get('bvid') || ''), { headers: BI_HEAD() });
+
+
+
+
 
 
 
@@ -914,7 +1826,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     if (j.code !== 0) return json(res, { ok: false, msg: j.message });
+
+
+
+
 
 
 
@@ -922,7 +1842,19 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -934,7 +1866,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   if (p === '/api/img') {
+
+
+
+
 
 
 
@@ -942,7 +1882,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     if (t.startsWith('//')) t = 'https:' + t;
+
+
+
+
 
 
 
@@ -950,7 +1898,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       res.writeHead(200, { 'Content-Type': 'image/gif', 'Cache-Control': 'max-age=86400' });
+
+
+
+
 
 
 
@@ -958,7 +1914,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -966,11 +1930,27 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     return pipeProxy(t, req, res, { Referer: ref });
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -982,7 +1962,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const t = q.get('url'); if (!t) { res.writeHead(400); return res.end(); }
+
+
+
+
 
 
 
@@ -990,7 +1978,19 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -1002,7 +2002,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   if (p === '/api/sb-diagnose') {
+
+
+
+
 
 
 
@@ -1010,11 +2018,23 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     const add = (name, ok, info) => results.steps.push({ name, ok, info });
 
 
 
+
+
+
+
     try {
+
+
+
+
 
 
 
@@ -1022,11 +2042,23 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       const t1 = setTimeout(() => ctrl1.abort(), 12000);
 
 
 
-      await fetch('https://workspace-eight-roan.vercel.app/api/ping', { signal: ctrl1.signal });
+
+
+
+
+      await fetch('https://workspace-eight-roan.vercel.app/api/ping', { headers: { 'user-agent': UA, accept: 'application/json' }, signal: ctrl1.signal });
+
+
+
+
 
 
 
@@ -1034,7 +2066,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       add('self_ping', true, 'vercel function can reach itself');
+
+
+
+
 
 
 
@@ -1042,7 +2082,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     try {
+
+
+
+
 
 
 
@@ -1050,11 +2098,23 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       const t2 = setTimeout(() => ctrl2.abort(), 12000);
 
 
 
-      const r = await fetch('https://httpbin.org/get', { signal: ctrl2.signal });
+
+
+
+
+      const r = await fetch('https://httpbin.org/get', { headers: { 'user-agent': UA, accept: 'application/json' }, signal: ctrl2.signal });
+
+
+
+
 
 
 
@@ -1062,7 +2122,15 @@ async function route(req, res, u) {
 
 
 
-      add('public_internet', true, 'status ' + r.status);
+
+
+
+
+      add('public_internet', r.ok, 'status ' + r.status);
+
+
+
+
 
 
 
@@ -1070,7 +2138,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     try {
+
+
+
+
 
 
 
@@ -1078,11 +2154,23 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       const t3 = setTimeout(() => ctrl3.abort(), 15000);
 
 
 
-      const r = await fetch(SB_ORIGIN + '/auth/v1/settings', { headers: { apikey: SB_ANON }, signal: ctrl3.signal });
+
+
+
+
+      const r = await fetch(SB_ORIGIN + '/auth/v1/settings', { headers: { 'user-agent': UA, apikey: SB_ANON, accept: 'application/json' }, signal: ctrl3.signal });
+
+
+
+
 
 
 
@@ -1090,11 +2178,23 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       const txt = await r.text();
 
 
 
-      add('supabase_settings', r.status < 400, 'status ' + r.status + ' ' + txt.slice(0, 200));
+
+
+
+
+      add('supabase_settings', r.ok, 'status ' + r.status + ' ' + txt.slice(0, 200));
+
+
+
+
 
 
 
@@ -1102,7 +2202,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       let detail = (e && e.message) || String(e);
+
+
+
+
 
 
 
@@ -1110,7 +2218,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
       if (e && e.cause && e.cause.code) detail += ' (' + e.cause.code + ')';
+
+
+
+
 
 
 
@@ -1118,7 +2234,15 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
     }
+
+
+
+
 
 
 
@@ -1126,14 +2250,29 @@ async function route(req, res, u) {
 
 
 
+
+
+
+
   }
 
 
 
 
-n
+
+
+
+
+
+
+
+
 
   if (p === '/api/sb' || p.startsWith('/api/sb/')) {
+
+
+
+
 
 
 
@@ -1141,7 +2280,15 @@ n
 
 
 
+
+
+
+
     const target = SB_ORIGIN + rest + (u.search || '');
+
+
+
+
 
 
 
@@ -1149,7 +2296,19 @@ n
 
 
 
+
+
+
+
   }
+
+
+
+
+
+
+
+
 
 
 
@@ -1165,7 +2324,19 @@ n
 
 
 
+
+
+
+
+
+
+
+
   return json(res, { ok: false, msg: 'not found: ' + p }, 404);
+
+
+
+
 
 
 
@@ -1177,7 +2348,19 @@ n
 
 
 
+
+
+
+
+
+
+
+
 /* ============================================================
+
+
+
+
 
 
 
@@ -1185,7 +2368,15 @@ n
 
 
 
+
+
+
+
  * ============================================================ */
+
+
+
+
 
 
 
@@ -1193,7 +2384,15 @@ module.exports = async (req, res) => {
 
 
 
+
+
+
+
   const u = new URL(req.url, 'http://localhost');
+
+
+
+
 
 
 
@@ -1201,7 +2400,15 @@ module.exports = async (req, res) => {
 
 
 
+
+
+
+
   if (!u.pathname.startsWith('/api/')) {
+
+
+
+
 
 
 
@@ -1209,11 +2416,23 @@ module.exports = async (req, res) => {
 
 
 
+
+
+
+
     return res.end();
 
 
 
+
+
+
+
   }
+
+
+
+
 
 
 
@@ -1221,7 +2440,15 @@ module.exports = async (req, res) => {
 
 
 
+
+
+
+
     await route(req, res, u);
+
+
+
+
 
 
 
@@ -1229,7 +2456,15 @@ module.exports = async (req, res) => {
 
 
 
+
+
+
+
     if (!res.headersSent) {
+
+
+
+
 
 
 
@@ -1237,7 +2472,15 @@ module.exports = async (req, res) => {
 
 
 
+
+
+
+
       res.end(JSON.stringify({ ok: false, msg: e.message }));
+
+
+
+
 
 
 
@@ -1245,11 +2488,22 @@ module.exports = async (req, res) => {
 
 
 
+
+
+
+
   }
 
 
 
+
+
+
+
 };
+
+
+
 
 
 
