@@ -1,3000 +1,1523 @@
 <!DOCTYPE html>
-
 <html lang="zh-CN">
-
 <head>
-
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>极简业务工作台</title>
-
 <meta name="theme-color" content="#111111">
-
 <meta name="apple-mobile-web-app-capable" content="yes">
-
 <meta name="mobile-web-app-capable" content="yes">
-
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
 <link rel="manifest" href="manifest.webmanifest">
-
 <link rel="apple-touch-icon" href="icon.svg">
-
 <!-- Supabase（跨设备云同步，CDN 引入，无需打包） + 用户配置（填入你的 Supabase 密钥） -->
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script src="sync-config.js"></script>
-
 <!-- ============================================================
-
   极简业务工作台 · 单文件应用
-
   结构说明（方便自行修改）：
-
   1. style 区       全部样式，黑白极简，改颜色搜索 --ink / --line
-
   2. body 布局区    左侧导航 aside + 右侧内容 main，每个模块一个 section.page
-
   3. script 区      按模块分区：存储层 / 计划 / 日历 / 客户 / 账单 / 锻炼 /
-
                     音乐 / B站 / 文件 / 小工具 / 专注模式 / AI检索 / 导入导出
-
   数据存储：localStorage（键 WB_DATA），文件二进制存 IndexedDB
-
 ============================================================ -->
-
 <style>
-
 :root{
-
   --ink:#111;          /* 主文字色 */
-
   --sub:#777;          /* 次要文字 */
-
   --line:#e4e4e4;      /* 边框线 */
-
   --bg:#fafafa;        /* 页面背景 */
-
   --card:#fff;         /* 卡片背景 */
-
   --up:#c0392b;        /* 收入/涨 红 */
-
   --down:#1e8449;      /* 支出/跌 绿 */
-
   --radius:10px;
-
 }
-
 *{box-sizing:border-box;margin:0;padding:0;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
-
 body{background:var(--bg);color:var(--ink);font-size:14px}
-
 button{cursor:pointer;border:1px solid var(--ink);background:#fff;color:var(--ink);border-radius:6px;padding:6px 14px;font-size:13px;transition:.15s}
-
 button:hover{background:var(--ink);color:#fff}
-
 button.ghost{border-color:var(--line);color:var(--sub)}
-
 button.ghost:hover{background:#f0f0f0;color:var(--ink)}
-
 button.solid{background:var(--ink);color:#fff}
-
 button.solid:hover{opacity:.8}
-
 button.mini{padding:2px 8px;font-size:12px}
-
 input,select,textarea{border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:13px;background:#fff;color:var(--ink);outline:none}
-
 input:focus,select:focus,textarea:focus{border-color:var(--ink)}
-
 textarea{resize:vertical;min-height:60px}
-
 h2{font-size:18px;margin-bottom:4px}
-
 h3{font-size:15px;margin:10px 0 8px}
-
 .muted{color:var(--sub);font-size:12px}
-
 /* ===== 整体布局 ===== */
-
 #app{display:flex;height:100vh;overflow:hidden}
-
 aside{width:190px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px;gap:4px;flex-shrink:0}
-
 aside .logo{font-size:17px;font-weight:700;letter-spacing:1px;margin-bottom:14px;padding-left:8px}
-
 aside .nav{flex:1;overflow-y:auto}
-
 aside .nav button{display:block;width:100%;text-align:left;border:none;background:none;padding:9px 10px;border-radius:8px;font-size:14px;color:#444;margin-bottom:2px}
-
 aside .nav button:hover{background:#f2f2f2;color:var(--ink)}
-
 aside .nav button.act{background:var(--ink);color:#fff}
-
 #focusBtn{margin-top:8px;border:1px dashed var(--ink);border-radius:8px;padding:10px;font-weight:600}
-
 main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-
 header{background:#fff;border-bottom:1px solid var(--line);padding:10px 22px;display:flex;align-items:center;gap:14px}
-
 #gSearch{flex:1;max-width:520px;position:relative}
-
 #gSearch input{width:100%;padding-left:34px}
-
 #gSearch .ico{position:absolute;left:11px;top:8px;color:var(--sub)}
-
 #clock{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--sub);font-size:13px}
-
 #content{flex:1;overflow-y:auto;padding:20px 22px}
-
 .page{display:none;max-width:1100px;margin:0 auto}
-
 .page.act{display:block}
-
 /* ===== 通用组件 ===== */
-
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:14px}
-
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-
 .tag{display:inline-block;border:1px solid var(--ink);border-radius:20px;padding:1px 10px;font-size:12px}
-
 .tag.gray{border-color:var(--line);color:var(--sub)}
-
 .chip{border:1px solid var(--line);border-radius:20px;padding:4px 14px;font-size:13px;background:#fff;cursor:pointer}
-
 .chip.act{background:var(--ink);color:#fff;border-color:var(--ink)}
-
 table{width:100%;border-collapse:collapse;font-size:13px}
-
 th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left}
-
 th{color:var(--sub);font-weight:500;font-size:12px}
-
 tr.sel td{background:#f4f4f4}
-
 tbody tr{cursor:pointer}
-
 tbody tr:hover td{background:#f7f7f7}
-
 .field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--sub)}
-
 .field input,.field select,.field textarea{font-size:13px;color:var(--ink)}
-
 .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
-
 .thumb{width:84px;height:84px;object-fit:cover;border:1px solid var(--line);border-radius:8px;cursor:pointer}
-
 .del-x{color:#999;cursor:pointer;font-size:12px}
-
 .del-x:hover{color:#c0392b}
-
 .empty{color:#aaa;text-align:center;padding:24px;font-size:13px}
-
 /* ===== 计划卡片 ===== */
-
 #planCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
-
 .plan-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;display:flex;flex-direction:column;gap:8px}
-
 .plan-card.done{opacity:.45}
-
 .plan-card.done .pc-title{text-decoration:line-through}
-
 .pc-title{font-size:14px;font-weight:600;word-break:break-all}
-
 .pc-foot{display:flex;justify-content:space-between;align-items:center}
-
 /* ===== 日历 ===== */
-
 #calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-
 .cal-head{text-align:center;color:var(--sub);font-size:12px;padding:4px 0}
-
 .cal-cell{min-height:86px;border:1px solid var(--line);border-radius:8px;padding:5px 6px;background:#fff;font-size:12px;cursor:pointer}
-
 .cal-cell.dim{opacity:.35}
-
 .cal-cell.today{border-color:var(--ink);border-width:2px}
-
 .cal-cell .d{font-weight:600;margin-bottom:3px}
-
 .cal-item{border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#f0f0f0}
-
 .cal-item.w{background:#e2e2e2}
-
 .cal-item.m{background:#d2d2d2}
-
 .cal-item.done{text-decoration:line-through;opacity:.5}
-
 /* ===== 图表 ===== */
-
 canvas.chart{width:100%;height:240px;background:#fff}
-
 /* ===== 音乐 ===== */
-
 .song{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid var(--line);cursor:pointer}
-
 .song:hover{background:#f7f7f7}
-
 .song.playing{background:#f0f0f0;font-weight:600}
-
 .song .fav{cursor:pointer;font-size:16px}
-
 /* ===== 专注模式 ===== */
-
 #focusOverlay{position:fixed;inset:0;background:#0d0d0d;color:#fff;z-index:99;display:none;flex-direction:column;align-items:center;justify-content:center;gap:22px}
-
 #focusOverlay.act{display:flex}
-
 #focusOverlay select,#focusOverlay input{background:#1b1b1b;color:#fff;border-color:#333}
-
 #fTimer{font-size:88px;font-variant-numeric:tabular-nums;font-weight:200;letter-spacing:4px}
-
 #fClock{font-size:15px;color:#888}
-
 #fTask{font-size:20px;max-width:70%;text-align:center}
-
 #focusOverlay button{background:none;color:#fff;border-color:#555}
-
 #focusOverlay button:hover{background:#fff;color:#000}
-
 /* ===== 全局检索结果 ===== */
-
 #gResult{position:absolute;top:40px;left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:8px;max-height:420px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.08);display:none;z-index:50}
-
 #gResult .gr-cat{padding:6px 12px;font-size:11px;color:var(--sub);background:#fafafa;border-bottom:1px solid var(--line)}
-
 #gResult .gr-item{padding:8px 12px;border-bottom:1px solid #f2f2f2;cursor:pointer;font-size:13px}
-
 #gResult .gr-item:hover{background:#f5f5f5}
-
 #gResult mark{background:#111;color:#fff;padding:0 2px;border-radius:2px}
-
 /* ===== 备忘录 ===== */
-
 .memo{border:1px solid var(--line);border-radius:8px;padding:10px;background:#fff;margin-bottom:8px;white-space:pre-wrap;font-size:13px}
-
 @media(max-width:800px){#app{flex-direction:column}aside{width:100%;flex-direction:row;overflow-x:auto}.grid2{grid-template-columns:1fr}}
-
 </style>
-
 </head>
-
 <body>
-
 <div id="app">
-
   <!-- ===================== 左侧导航 ===================== -->
-
   <aside>
-
     <div class="logo">◼ 工作台</div>
-
     <div class="nav" id="nav">
-
       <button data-p="plan" class="act">📅 计划 · 日程</button>
-
       <button data-p="customer">👥 客户管理</button>
-
       <button data-p="bill">💰 账单记账</button>
-
       <button data-p="fit">🏃 锻炼 · 体重</button>
-
       <button data-p="music">🎵 音乐</button>
-
       <button data-p="bili">📺 哔哩哔哩</button>
-
       <button data-p="file">📄 文件 · 笔记</button>
-
       <button data-p="tool">🧰 小工具</button>
-
       <button data-p="set">⚙️ 数据 · 设置</button>
-
     </div>
-
     <button id="focusBtn" onclick="Focus.open()">🎯 专注模式</button>
-
   </aside>
 
-
-
   <main>
-
     <!-- ===================== 顶栏：AI 全局检索 ===================== -->
-
     <header>
-
       <div id="gSearch">
-
         <span class="ico">🔍</span>
-
         <input id="gInput" placeholder="AI 智能检索：计划 / 客户 / 账单 / 运动记录 / 备忘…" autocomplete="off">
-
         <div id="gResult"></div>
-
       </div>
-
       <span id="clock"></span>
-
     </header>
 
-
-
     <div id="content">
-
     <!-- ===================== ① 计划 & 日程 ===================== -->
-
     <section class="page act" id="page-plan">
-
       <div class="card">
-
         <h2>新增计划</h2>
-
         <div class="row" style="margin-top:10px">
-
           <select id="planType" style="width:110px">
-
             <option value="day">日计划</option>
-
             <option value="week">周计划</option>
-
             <option value="month">月计划</option>
-
           </select>
-
           <input type="date" id="planDate">
-
           <input id="planTitle" placeholder="计划内容…" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')Plan.add()">
-
           <button class="solid" onclick="Plan.add()">添加</button>
-
         </div>
-
         <div class="muted" style="margin-top:6px">新增后自动双向同步至下方日程日历；周计划按所在周、月计划按所在月归档展示。</div>
-
       </div>
-
       <div class="card">
-
         <div class="row" style="justify-content:space-between">
-
           <h2>计划卡片</h2>
-
           <div class="row" id="planFilter">
-
             <span class="chip act" data-f="all">全部</span>
-
             <span class="chip" data-f="day">日计划</span>
-
             <span class="chip" data-f="week">周计划</span>
-
             <span class="chip" data-f="month">月计划</span>
-
             <span class="chip" data-f="undone">未完成</span>
-
           </div>
-
         </div>
-
         <div id="planCards" style="margin-top:12px"></div>
-
       </div>
-
       <div class="card">
-
         <div class="row" style="justify-content:space-between">
-
           <h2>日程日历</h2>
-
           <div class="row">
-
             <button class="mini ghost" onclick="Cal.move(-1)">◀</button>
-
             <b id="calTitle"></b>
-
             <button class="mini ghost" onclick="Cal.move(1)">▶</button>
-
             <button class="mini ghost" onclick="Cal.today()">今天</button>
-
           </div>
-
         </div>
-
         <div class="muted" style="margin:6px 0">浅灰=日计划 · 中灰=周计划 · 深灰=月计划，点击日期查看当天全部日程</div>
-
         <div id="calMonthPlans" style="margin-bottom:8px"></div>
-
         <div id="calGrid"></div>
-
         <div id="calDayDetail" style="margin-top:10px"></div>
-
       </div>
-
     </section>
-
-
 
     <!-- ===================== ② 客户管理 ===================== -->
-
     <section class="page" id="page-customer">
-
       <div class="card">
-
         <div class="row">
-
           <span class="chip act" data-ct="trade" onclick="Cust.switchType('trade',this)">外贸业务客户</span>
-
           <span class="chip" data-ct="wig" onclick="Cust.switchType('wig',this)">假毛造型客户</span>
-
           <input id="custSearch" placeholder="客户全局检索（两类客户均可搜索）…" style="flex:1;min-width:180px" oninput="Cust.renderList()">
-
         </div>
-
         <div class="row" style="margin-top:10px">
-
           <select id="custFPlat" onchange="Cust.renderList()"><option value="">全部平台</option></select>
-
           <select id="custFStat" onchange="Cust.renderList()"><option value="">全部状态</option></select>
-
           <button class="mini ghost" onclick="Cust.resetFilter()">清空筛选</button>
-
           <span class="muted" id="custCount"></span>
-
         </div>
-
       </div>
-
       <!-- 上：客户列表 -->
-
       <div class="card">
-
         <h2 id="custListTitle">客户列表</h2>
-
         <div style="overflow-x:auto;margin-top:8px"><table id="custTable"></table></div>
-
       </div>
-
       <!-- 下：详情填写区 -->
-
       <div class="card">
-
         <div class="row" style="justify-content:space-between">
-
           <h2 id="custFormTitle">新增 / 编辑客户</h2>
-
           <div class="row">
-
             <button class="mini ghost" onclick="Cust.newForm()">＋ 新建</button>
-
             <button class="mini ghost" id="custDelBtn" style="display:none" onclick="Cust.del()">删除当前客户</button>
-
           </div>
-
         </div>
-
         <div class="form-grid" id="custForm" style="margin-top:10px"></div>
-
         <div id="wigImgArea" style="display:none;margin-top:10px">
-
           <h3>假发参考图片</h3>
-
           <div class="row" id="wigImgList"></div>
-
           <input type="file" id="wigImgFile" accept="image/*" multiple style="margin-top:6px">
-
         </div>
-
         <div style="margin-top:12px"><button class="solid" onclick="Cust.save()">保存客户</button>
-
         <span class="muted" id="custMeta"></span></div>
-
       </div>
-
       <!-- 外贸注意事项 -->
-
       <div class="card" id="tradeNoteCard">
-
         <h2>外贸通用业务注意事项</h2>
-
         <textarea id="tradeNotes" style="width:100%;min-height:110px;margin-top:8px" placeholder="记录付款条款、汇率风险、包装要求、单证注意点等…" onchange="Cust.saveNotes()"></textarea>
-
         <div class="muted">自动保存</div>
-
       </div>
-
     </section>
-
-
 
     <!-- ===================== ③ 账单管理 ===================== -->
-
     <section class="page" id="page-bill">
-
       <div class="card">
-
         <h2>记一笔</h2>
-
         <div class="row" style="margin-top:10px">
-
           <select id="billCat1" style="width:120px" onchange="Bill.syncCat2()"></select>
-
           <select id="billCat2" style="width:120px"></select>
-
           <input type="number" id="billAmt" placeholder="金额 ¥" style="width:110px" step="0.01">
-
           <input type="date" id="billDate">
-
           <select id="billPay" style="width:100px">
-
             <option>微信</option><option>支付宝</option><option>现金</option><option>银行卡</option><option>信用卡</option><option>其他</option>
-
           </select>
-
           <input id="billNote" placeholder="备注…" style="flex:1;min-width:140px" onkeydown="if(event.key==='Enter')Bill.add()">
-
           <button class="solid" onclick="Bill.add()">记账</button>
-
         </div>
-
       </div>
-
       <div class="card">
-
         <div class="row" style="justify-content:space-between">
-
           <h2>月度收支</h2>
-
           <div class="row">
-
             <button class="mini ghost" onclick="Bill.moveMonth(-1)">◀</button>
-
             <b id="billMonthTitle"></b>
-
             <button class="mini ghost" onclick="Bill.moveMonth(1)">▶</button>
-
           </div>
-
         </div>
-
         <div class="row" style="margin-top:10px;gap:24px" id="billSummary"></div>
-
         <div id="billCatStat" style="margin-top:10px"></div>
-
       </div>
-
       <div class="card">
-
         <div class="row">
-
           <h2 style="margin-right:10px">账单明细</h2>
-
           <select id="billFCat" onchange="Bill.renderList()"><option value="">全部分类</option></select>
-
           <select id="billFPay" onchange="Bill.renderList()"><option value="">全部付款方式</option>
-
             <option>微信</option><option>支付宝</option><option>现金</option><option>银行卡</option><option>信用卡</option><option>其他</option></select>
-
           <input id="billFKw" placeholder="搜备注…" oninput="Bill.renderList()" style="width:140px">
-
         </div>
-
         <div style="overflow-x:auto;margin-top:8px"><table id="billTable"></table></div>
-
       </div>
-
     </section>
-
-
 
     <!-- ===================== ④ 锻炼 & 体重 ===================== -->
-
     <section class="page" id="page-fit">
-
       <div class="card">
-
         <h2>今日打卡</h2>
-
         <div class="row" style="margin-top:10px">
-
           <input type="date" id="fitDate">
-
           <input id="fitContent" placeholder="运动项目内容，如：跑步5km + 拉伸…" style="flex:1;min-width:200px">
-
           <input type="number" id="fitWeight" placeholder="体重 kg" style="width:100px" step="0.1">
-
           <input type="file" id="fitImg" accept="image/*" multiple style="max-width:210px">
-
           <button class="solid" onclick="Fit.add()">保存打卡</button>
-
         </div>
-
       </div>
-
       <div class="card">
-
         <h2>体重变化趋势</h2>
-
         <canvas id="fitChart" class="chart" height="240"></canvas>
-
       </div>
-
       <div class="card">
-
         <h2>历史记录</h2>
-
         <div id="fitList" style="margin-top:8px"></div>
-
       </div>
-
     </section>
-
-
 
     <!-- ===================== ⑤ 音乐（网易云在线） ===================== -->
-
     <section class="page" id="page-music">
-
       <div class="srv-warn"></div>
-
       <div class="card">
-
         <div class="row" style="align-items:flex-start;gap:14px;flex-wrap:nowrap">
-
           <img id="npCover" style="width:92px;height:92px;border-radius:8px;border:1px solid var(--line);object-fit:cover;display:none;flex-shrink:0">
-
           <div style="flex:1;min-width:0">
-
             <div id="npTitle" style="font-size:16px;font-weight:600">未在播放</div>
-
             <div id="npArtist" class="muted" style="margin:3px 0 8px"></div>
-
             <audio id="audio" controls style="width:100%"></audio>
-
             <div class="row" style="margin-top:8px">
-
               <button class="mini ghost" onclick="Music.prev()">⏮ 上一首</button>
-
               <button class="mini ghost" onclick="Music.next()">⏭ 下一首</button>
-
               <label class="muted"><input type="checkbox" id="musicLoop" checked> 列表循环</label>
-
               <button class="mini ghost" onclick="Music.toggleLyric()">📃 歌词</button>
-
             </div>
-
           </div>
-
         </div>
-
         <div id="lyricBox" style="display:none;max-height:170px;overflow-y:auto;margin-top:10px;border-top:1px solid var(--line);padding-top:8px;text-align:center;font-size:13px;line-height:2"></div>
-
       </div>
-
-
 
       <div class="card">
-
         <h2>🎧 网易云音乐 · 在线搜索</h2>
-
         <div class="row" style="margin-top:10px">
-
           <input id="neKw" placeholder="搜索歌名 / 歌手，如：周杰伦 晴天" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')Music.neSearch()">
-
           <button class="solid" onclick="Music.neSearch()">搜索</button>
-
         </div>
-
         <div class="row" style="margin-top:8px">
-
           <input id="nePlId" placeholder="导入网易云歌单：粘贴歌单链接或纯数字 ID" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')Music.neImport()">
-
           <button onclick="Music.neImport()">导入歌单</button>
-
         </div>
-
         <div id="neMsg" class="muted" style="margin-top:6px"></div>
-
         <div id="neResult" style="margin-top:8px;max-height:400px;overflow-y:auto"></div>
-
       </div>
-
-
 
       <div class="grid2">
-
         <div class="card">
-
           <div class="row" style="justify-content:space-between">
-
             <h2>我的歌单</h2>
-
             <button class="mini ghost" onclick="Music.addList()">＋ 新建歌单</button>
-
           </div>
-
           <div id="plList" style="margin-top:8px"></div>
-
         </div>
-
         <div class="card">
-
           <div class="row" style="justify-content:space-between">
-
             <h2 id="songListTitle">歌曲</h2>
-
             <div class="row">
-
               <button class="mini ghost" onclick="Music.playAll()">▶ 全部播放</button>
-
               <button class="mini ghost" onclick="Music.delList()">删除歌单</button>
-
             </div>
-
           </div>
-
           <div id="songList" style="margin-top:8px;max-height:400px;overflow-y:auto"></div>
-
           <details style="margin-top:10px">
-
             <summary class="muted" style="cursor:pointer">其它添加方式（本地文件 / 自定义直链）</summary>
-
             <div class="row" style="margin-top:8px">
-
               <input id="songName" placeholder="歌名" style="width:110px">
-
               <input id="songUrl" placeholder="音频直链 URL" style="flex:1;min-width:130px">
-
               <button class="mini solid" onclick="Music.addSong()">添加</button>
-
             </div>
-
             <div class="row" style="margin-top:6px">
-
               <input type="file" id="songFile" accept="audio/*" multiple>
-
               <span class="muted">本地文件仅本次会话可播</span>
-
             </div>
-
           </details>
-
         </div>
-
       </div>
-
       <div class="muted">❤ 收藏自动进入「我喜欢」；网易云歌曲以 ID 保存，链接永不过期。少数 VIP／独家版权歌曲无法播放属正常现象。</div>
-
     </section>
-
-
 
     <!-- ===================== ⑥ 哔哩哔哩（扫码登录） ===================== -->
-
     <section class="page" id="page-bili">
-
       <div class="srv-warn"></div>
-
       <!-- 账号区 -->
-
       <div class="card">
-
         <div class="row" style="justify-content:space-between">
-
           <h2>账号</h2>
-
           <div id="biliAcct" class="row"></div>
-
         </div>
-
         <div id="biliLoginBox" style="display:none;margin-top:12px">
-
           <div class="row" style="align-items:flex-start;gap:18px">
-
             <div>
-
               <div id="qrBox" style="width:180px;height:180px;border:1px solid var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;background:#fff"></div>
-
               <div class="muted" style="text-align:center;margin-top:6px" id="qrState">点击下方按钮生成二维码</div>
-
             </div>
-
             <div style="flex:1;min-width:220px">
-
               <div class="muted" style="line-height:1.9">
-
                 1. 点击「生成二维码」<br>
-
                 2. 打开手机哔哩哔哩 App → 右上角扫一扫<br>
-
                 3. 手机确认后自动登录，之后可读取你的全部收藏夹（含私密）<br>
-
                 <b>登录状态保存在本机 .bili_session.json，不会上传任何地方。</b>
-
               </div>
-
               <div class="row" style="margin-top:10px">
-
                 <button class="solid" onclick="Bili.genQR()">生成二维码</button>
-
                 <a id="qrLink" href="#" target="_blank" style="display:none;font-size:12px;color:var(--sub)">扫不了？点此用手机浏览器打开</a>
-
               </div>
-
               <details style="margin-top:10px">
-
                 <summary class="muted" style="cursor:pointer">扫码不便？手动填 Cookie</summary>
-
                 <div class="row" style="margin-top:8px">
-
                   <input id="biliCk" placeholder="粘贴 SESSDATA 值" style="flex:1;min-width:160px">
-
                   <button class="mini" onclick="Bili.setCookie()">保存</button>
-
                 </div>
-
                 <div class="muted" style="margin-top:4px">浏览器登录 B 站 → F12 → 应用 → Cookie → 复制 SESSDATA</div>
-
               </details>
-
             </div>
-
           </div>
-
         </div>
-
       </div>
-
-
 
       <!-- 播放器 -->
-
       <div class="card">
-
         <div class="row" style="justify-content:space-between">
-
           <h2 id="biliNowTitle">播放器</h2>
-
           <a id="biliOpenLink" href="#" target="_blank" class="muted" style="display:none">↗ 在 B 站打开</a>
-
         </div>
-
         <div style="position:relative;padding-top:56%;margin-top:10px;background:#000;border-radius:8px;overflow:hidden">
-
           <iframe id="biliFrame" style="position:absolute;inset:0;width:100%;height:100%;border:0" allowfullscreen scrolling="no" referrerpolicy="no-referrer"></iframe>
-
         </div>
-
       </div>
-
-
 
       <!-- 收藏夹 -->
-
       <div class="card">
-
         <div class="row" style="justify-content:space-between">
-
           <h2>我的收藏夹</h2>
-
           <div class="row">
-
             <select id="biliFolder" style="min-width:180px" onchange="Bili.loadFolder()"><option value="">未登录</option></select>
-
             <button class="mini ghost" onclick="Bili.loadFolders()">刷新</button>
-
           </div>
-
         </div>
-
         <div class="muted" id="biliFetchMsg" style="margin-top:6px"></div>
-
         <div id="biliFavList" style="margin-top:10px"></div>
-
         <div style="text-align:center;margin-top:10px"><button class="mini ghost" id="biliMoreBtn" style="display:none" onclick="Bili.loadFolder(true)">加载更多</button></div>
-
       </div>
-
-
 
       <!-- 手动收藏 -->
-
       <div class="card">
-
         <div class="row" style="justify-content:space-between">
-
           <h2>我手动收藏的视频</h2>
-
           <div class="row">
-
             <input id="biliBv" placeholder="BV号，如 BV1xx411c7mD" style="width:190px">
-
             <button class="mini solid" onclick="Bili.addManual()">添加</button>
-
           </div>
-
         </div>
-
         <div id="biliList" style="margin-top:8px"></div>
-
       </div>
-
     </section>
-
-
 
     <!-- ===================== ⑦ 文件 & 笔记 ===================== -->
-
     <section class="page" id="page-file">
-
       <div class="card">
-
         <h2>导入 Office / 文档文件</h2>
-
         <div class="row" style="margin-top:8px">
-
           <input type="file" id="fileInput" accept=".docx,.xlsx,.xls,.csv,.txt,.md,.pdf" multiple>
-
           <span class="muted">支持 Word(.docx)、Excel(.xlsx/.csv)、PDF、txt/md，导入后可在线查看并做笔记</span>
-
         </div>
-
       </div>
-
       <div class="card">
-
         <h2>文件列表</h2>
-
         <div style="overflow-x:auto;margin-top:8px"><table id="fileTable"></table></div>
-
       </div>
-
       <div class="card" id="fileViewCard" style="display:none">
-
         <div class="row" style="justify-content:space-between">
-
           <h2 id="fileViewTitle">预览</h2>
-
           <button class="mini ghost" onclick="Files.closeView()">关闭预览</button>
-
         </div>
-
         <div id="fileViewer" style="margin-top:10px;max-height:480px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:12px;background:#fff"></div>
-
         <h3>文件笔记</h3>
-
         <textarea id="fileNote" style="width:100%;min-height:90px" placeholder="针对此文件的笔记…"></textarea>
-
         <div style="margin-top:8px"><button class="mini solid" onclick="Files.saveNote()">保存笔记</button></div>
-
       </div>
-
     </section>
-
-
 
     <!-- ===================== ⑧ 小工具 ===================== -->
-
     <section class="page" id="page-tool">
-
       <div class="grid2">
-
         <div class="card">
-
           <h2>📝 备忘录</h2>
-
           <div class="row" style="margin-top:8px">
-
             <textarea id="memoInput" placeholder="随手记…" style="flex:1"></textarea>
-
           </div>
-
           <div style="margin:8px 0"><button class="mini solid" onclick="Tool.addMemo()">添加备忘</button></div>
-
           <div id="memoList"></div>
-
         </div>
-
         <div>
-
           <div class="card">
-
             <h2>⏱ 计时器</h2>
-
             <div style="font-size:42px;font-variant-numeric:tabular-nums;text-align:center;margin:10px 0" id="tmDisplay">00:00:00</div>
-
             <div class="row" style="justify-content:center">
-
               <button class="mini" onclick="Tool.tmStart()">开始</button>
-
               <button class="mini ghost" onclick="Tool.tmPause()">暂停</button>
-
               <button class="mini ghost" onclick="Tool.tmReset()">归零</button>
-
             </div>
-
             <div class="row" style="justify-content:center;margin-top:10px">
-
               <input type="number" id="tmCd" placeholder="倒计时分钟" style="width:110px">
-
               <button class="mini" onclick="Tool.tmCountdown()">倒计时</button>
-
             </div>
-
           </div>
-
           <div class="card">
-
             <h2>🧮 计算器</h2>
-
             <div class="row" style="margin-top:8px">
-
               <input id="calcExp" placeholder="如 (128+56)*0.85" style="flex:1" onkeydown="if(event.key==='Enter')Tool.calc()">
-
               <button class="mini solid" onclick="Tool.calc()">=</button>
-
             </div>
-
             <div id="calcOut" style="font-size:22px;margin-top:8px;text-align:right">0</div>
-
           </div>
-
         </div>
-
       </div>
-
     </section>
-
-
 
     <!-- ===================== ⑨ 数据 & 设置 ===================== -->
-
     <section class="page" id="page-set">
-
       <div class="card">
-
         <h2>数据备份</h2>
-
         <div class="muted" style="margin:6px 0">全部数据（计划/客户/账单/运动/歌单/B站收藏/备忘/文件笔记，含图片）导出为一个 JSON 文件；导入即可完整恢复。导入的 Office 文件本体存于浏览器 IndexedDB，不包含在 JSON 中，重装浏览器需重新导入文件。</div>
-
         <div class="row" style="margin-top:8px">
-
           <button class="solid" onclick="Store.exportAll()">📤 导出全部数据</button>
-
           <button onclick="document.getElementById('importFile').click()">📥 导入备份</button>
-
           <input type="file" id="importFile" accept=".json" style="display:none">
-
           <button class="ghost" onclick="Store.clearAll()">清空全部数据</button>
-
         </div>
-
         <div class="muted" style="margin-top:10px" id="storeInfo"></div>
-
       </div>
-
       <div class="card" id="syncCard">
-
         <h2>☁️ 云端同步（多设备互通）</h2>
-
         <div id="syncStatus" class="muted" style="margin:6px 0">检测中…</div>
-
         <div id="syncLogin">
-
           <div class="row">
-
             <input id="syncEmail" placeholder="同步账号邮箱" style="flex:1" type="email" autocomplete="email">
-
             <input id="syncPwd" placeholder="密码" style="flex:1" type="password" autocomplete="current-password">
-
           </div>
-
           <div class="row" style="margin-top:6px">
-
             <button class="mini solid" onclick="Sync.login()">登录</button>
-
             <button class="mini ghost" onclick="Sync.signup()">注册新账号</button>
-
             <button class="mini ghost" onclick="Sync.testConn()" title="测试能否连上云端代理">测试连接</button>
-
           </div>
-
           <div class="muted" style="margin-top:6px">手机和电脑用<b>同一个账号</b>登录，数据自动互通。已有账号点「登录」；第一次用点「注册新账号」（密码至少 6 位）。</div>
-
           <div id="syncTest" class="muted" style="margin-top:4px"></div>
-
         </div>
-
         <div id="syncOn" style="display:none">
-
           <div class="row">
-
             <button class="mini ghost" onclick="Sync.pushNow()">↑ 立即上传</button>
-
             <button class="mini ghost" onclick="Sync.pullNow()">↓ 立即下载</button>
-
             <button class="mini ghost" onclick="Sync.logout()">退出账号</button>
-
           </div>
-
           <div class="muted" style="margin-top:6px">每次改动自动后台上传；换设备时点「立即下载」即可拉取最新。冲突以「最后保存」为准。</div>
-
         </div>
-
         <div id="syncCfgTip" class="muted" style="margin-top:8px;color:#c0392b"></div>
-
       </div>
-
       <div class="card">
-
         <h2>📁 本地文件同步（不翻墙）</h2>
-
         <div class="muted" style="margin:6px 0">无需任何代理/账号：导出数据文件，通过微信、邮件、U盘传到另一台设备，再导入即可。</div>
-
         <div class="row" style="margin-top:6px">
-
           <button class="mini solid" onclick="FileSync.export()">⬇️ 导出数据</button>
-
           <button class="mini ghost" onclick="FileSync.import()">⬆️ 导入数据</button>
-
           <input id="fileImport" type="file" accept=".json,application/json" style="display:none" onchange="FileSync.onFile(this)">
-
         </div>
-
         <div id="fileSyncMsg" class="muted" style="margin-top:6px"></div>
-
       </div>
-
       <div class="card">
-
         <h2>启动方式</h2>
-
         <div class="muted" style="line-height:2">
-
           · <b>推荐：双击「启动工作台.bat」</b>，浏览器自动打开 http://localhost:8848 —— 全部功能可用（含网易云音乐、B站收藏夹）。<br>
-
           · 直接双击 html 文件也能用，但网易云和 B 站会因浏览器跨域限制不可用，其余模块正常。<br>
-
           · 两种方式的数据是<b>分开存储</b>的（浏览器按来源隔离），建议固定用一种。若已有数据，可先导出 JSON 再在新地址导入。<br>
-
           · B站登录凭证保存在本机 .bili_session.json，不会上传任何服务器。
-
         </div>
-
       </div>
-
       <div class="card">
-
         <h2>使用说明</h2>
-
         <div class="muted" style="line-height:2">
-
           · 所有数据保存在本机浏览器 localStorage，请定期导出备份。<br>
-
           · 图片会自动压缩存储；若提示空间不足请导出后清理旧记录。<br>
-
           · 想改样式：打开本 HTML 文件，顶部 &lt;style&gt; 内 --ink（主色）--bg（背景）等变量即可整体换肤。<br>
-
           · 想加功能：底部 &lt;script&gt; 按模块分区注释，复制现有模块结构即可扩展。
-
         </div>
-
       </div>
-
     </section>
-
     </div>
-
   </main>
-
 </div>
-
-
 
 <!-- ===================== 专注模式 ===================== -->
-
 <div id="focusOverlay">
-
   <div id="fClock"></div>
-
   <div id="fTask">选择一个任务开始专注</div>
-
   <div id="fTimer">25:00</div>
-
   <div class="row" id="fSetup">
-
     <select id="fTaskSel" style="min-width:220px"></select>
-
     <select id="fDur">
-
       <option value="25">25 分钟</option><option value="45">45 分钟</option>
-
       <option value="60">60 分钟</option><option value="90">90 分钟</option>
-
     </select>
-
     <button onclick="Focus.start()">开始专注</button>
-
   </div>
-
   <div class="row" id="fRunning" style="display:none">
-
     <button onclick="Focus.done()">✔ 完成任务</button>
-
     <button onclick="Focus.stop()">结束专注</button>
-
   </div>
-
   <button class="mini" style="position:absolute;top:20px;right:24px" onclick="Focus.close()">✕ 退出</button>
-
 </div>
 
-
-
 <script>
-
 /* ============================================================
-
    ★ 存储层：localStorage 主数据 + IndexedDB 文件二进制
-
 ============================================================ */
-
 const KEY='WB_DATA';
-
 const DEF={plans:[],custTrade:[],custWig:[],tradeNotes:'',bills:[],workouts:[],
-
   memos:[],playlists:[{id:'fav',name:'我喜欢',songs:[]}],biliVideos:[],files:[]};
-
 let S=load();
-
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));return Object.assign(structuredClone(DEF),d||{});}catch(e){return structuredClone(DEF);}}
-
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){alert('存储空间不足！请到「数据·设置」导出备份后清理旧图片/记录。');}updateStoreInfo();triggerSync();}
-
 /* 同步钩子：Sync 初始化成功后接管 push；未配置时为空操作（放在存储层以规避 const TDZ） */
-
 let _syncHook=()=>{};
-
 function triggerSync(){try{_syncHook();}catch(e){}}
-
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-
 const $=id=>document.getElementById(id);
-
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
 const fmtDT=ts=>{const d=new Date(ts);return d.toLocaleDateString('zh-CN')+' '+d.toTimeString().slice(0,5);};
-
 const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
-
 function updateStoreInfo(){const used=(localStorage.getItem(KEY)||'').length;$('storeInfo').textContent='当前数据占用约 '+(used/1024).toFixed(1)+' KB（浏览器上限约 5MB）· 计划'+S.plans.length+'条 · 客户'+(S.custTrade.length+S.custWig.length)+'位 · 账单'+S.bills.length+'笔 · 运动'+S.workouts.length+'条';}
-
 /* 图片压缩为 base64（最长边 900px, JPEG 0.8） */
-
 function compressImg(file){return new Promise(res=>{const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const mx=900,sc=Math.min(1,mx/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=img.width*sc;c.height=img.height*sc;c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.8));};img.src=e.target.result;};r.readAsDataURL(file);});}
-
 /* IndexedDB：存导入的文件二进制 */
-
 let idb;const idbReady=new Promise(res=>{const rq=indexedDB.open('WB_FILES',1);rq.onupgradeneeded=e=>e.target.result.createObjectStore('files');rq.onsuccess=e=>{idb=e.target.result;res();};rq.onerror=()=>res();});
-
 const idbPut=(k,v)=>idbReady.then(()=>new Promise(r=>{if(!idb)return r();const t=idb.transaction('files','readwrite');t.objectStore('files').put(v,k);t.oncomplete=r;}));
-
 const idbGet=k=>idbReady.then(()=>new Promise(r=>{if(!idb)return r(null);const q=idb.transaction('files').objectStore('files').get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>r(null);}));
-
 const idbDel=k=>idbReady.then(()=>new Promise(r=>{if(!idb)return r();const t=idb.transaction('files','readwrite');t.objectStore('files').delete(k);t.oncomplete=r;}));
 
-
-
 /* ============================================================
-
    ★ 页面导航 + 时钟
-
 ============================================================ */
-
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.p));
-
 function go(p){document.querySelectorAll('#nav button').forEach(x=>x.classList.toggle('act',x.dataset.p===p));
-
   document.querySelectorAll('.page').forEach(x=>x.classList.toggle('act',x.id==='page-'+p));}
-
 setInterval(()=>{const n=new Date();$('clock').textContent=n.toLocaleDateString('zh-CN',{weekday:'short'})+' '+n.toLocaleString('zh-CN');},1000);
 
-
-
 /* ============================================================
-
    ★ 模块一：计划（卡片 + 分类 + 完成状态）
-
 ============================================================ */
-
 const TYPE_TXT={day:'日',week:'周',month:'月'};
-
 const Plan={
-
   filter:'all',
-
   add(){const t=$('planTitle').value.trim();if(!t)return alert('请输入计划内容');
-
     S.plans.push({id:uid(),title:t,type:$('planType').value,date:$('planDate').value||todayStr(),done:false,createdAt:Date.now()});
-
     $('planTitle').value='';save();Plan.render();Cal.render();},
-
   toggle(id){const p=S.plans.find(x=>x.id===id);p.done=!p.done;save();Plan.render();Cal.render();},
-
   del(id){if(!confirm('删除该计划？'))return;S.plans=S.plans.filter(x=>x.id!==id);save();Plan.render();Cal.render();},
-
   render(){const box=$('planCards');
-
     let list=[...S.plans].sort((a,b)=>b.createdAt-a.createdAt);
-
     if(Plan.filter==='undone')list=list.filter(p=>!p.done);
-
     else if(Plan.filter!=='all')list=list.filter(p=>p.type===Plan.filter);
-
     box.innerHTML=list.length?list.map(p=>`
-
       <div class="plan-card ${p.done?'done':''}">
-
         <div class="row" style="justify-content:space-between">
-
           <span class="tag ${p.done?'gray':''}">${TYPE_TXT[p.type]}计划</span>
-
           <span class="del-x" onclick="Plan.del('${p.id}')">删除</span>
-
         </div>
-
         <div class="pc-title">${esc(p.title)}</div>
-
         <div class="pc-foot">
-
           <span class="muted">${p.date}<br>${fmtDT(p.createdAt)}</span>
-
           <button class="mini ${p.done?'ghost':''}" onclick="Plan.toggle('${p.id}')">${p.done?'↺ 未完成':'✔ 完成'}</button>
-
         </div>
-
       </div>`).join(''):'<div class="empty">暂无计划，添加一条开始吧</div>';}
-
 };
-
 document.querySelectorAll('#planFilter .chip').forEach(c=>c.onclick=()=>{document.querySelectorAll('#planFilter .chip').forEach(x=>x.classList.remove('act'));c.classList.add('act');Plan.filter=c.dataset.f;Plan.render();});
 
-
-
 /* ============================================================
-
    ★ 模块一(2)：日程日历（自动同步全部计划）
-
 ============================================================ */
-
 const Cal={
-
   y:new Date().getFullYear(),m:new Date().getMonth(),
-
   move(d){Cal.m+=d;if(Cal.m<0){Cal.m=11;Cal.y--;}if(Cal.m>11){Cal.m=0;Cal.y++;}Cal.render();},
-
   today(){Cal.y=new Date().getFullYear();Cal.m=new Date().getMonth();Cal.render();},
-
   weekRange(dateStr){const d=new Date(dateStr+'T00:00:00');const day=(d.getDay()+6)%7;const s=new Date(d);s.setDate(d.getDate()-day);const e=new Date(s);e.setDate(s.getDate()+6);return[s,e];},
-
   render(){$('calTitle').textContent=Cal.y+' 年 '+(Cal.m+1)+' 月';
-
     /* 月计划横条 */
-
     const mPlans=S.plans.filter(p=>p.type==='month'&&new Date(p.date+'T00:00:00').getFullYear()===Cal.y&&new Date(p.date+'T00:00:00').getMonth()===Cal.m);
-
     $('calMonthPlans').innerHTML=mPlans.length?'<b style="font-size:12px">本月计划：</b>'+mPlans.map(p=>`<span class="tag ${p.done?'gray':''}" style="margin-right:6px">${p.done?'✔ ':''}${esc(p.title)}</span>`).join(''):'';
-
     const first=new Date(Cal.y,Cal.m,1);const start=new Date(first);start.setDate(1-((first.getDay()+6)%7));
-
     let html=['一','二','三','四','五','六','日'].map(w=>`<div class="cal-head">${w}</div>`).join('');
-
     const tStr=todayStr();
-
     for(let i=0;i<42;i++){const d=new Date(start);d.setDate(start.getDate()+i);
-
       const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-
       const dim=d.getMonth()!==Cal.m;
-
       const items=S.plans.filter(p=>{
-
         if(p.type==='day')return p.date===ds;
-
         if(p.type==='week'){const[s,e]=Cal.weekRange(p.date);return d>=s&&d<=e&&((d.getDay()+6)%7===0||p.date===ds);}
-
         return false;});
-
       html+=`<div class="cal-cell ${dim?'dim':''} ${ds===tStr?'today':''}" onclick="Cal.showDay('${ds}')">
-
         <div class="d">${d.getDate()}</div>
-
         ${items.slice(0,3).map(p=>`<div class="cal-item ${p.type==='week'?'w':''} ${p.done?'done':''}">${TYPE_TXT[p.type]}·${esc(p.title)}</div>`).join('')}
-
         ${items.length>3?`<div class="muted">+${items.length-3}</div>`:''}</div>`;}
-
     $('calGrid').innerHTML=html;},
-
   showDay(ds){const d=new Date(ds+'T00:00:00');
-
     const items=S.plans.filter(p=>{
-
       if(p.type==='day')return p.date===ds;
-
       if(p.type==='week'){const[s,e]=Cal.weekRange(p.date);return d>=s&&d<=e;}
-
       if(p.type==='month'){const pd=new Date(p.date+'T00:00:00');return pd.getFullYear()===d.getFullYear()&&pd.getMonth()===d.getMonth();}
-
       return false;});
-
     $('calDayDetail').innerHTML=`<b>${ds} 日程（${items.length}）</b>`+(items.length?items.map(p=>`
-
       <div class="row" style="border-bottom:1px solid var(--line);padding:6px 0">
-
         <span class="tag ${p.done?'gray':''}">${TYPE_TXT[p.type]}</span>
-
         <span style="flex:1;${p.done?'text-decoration:line-through;color:#999':''}">${esc(p.title)}</span>
-
         <button class="mini ghost" onclick="Plan.toggle('${p.id}')">${p.done?'↺':'✔'}</button>
-
       </div>`).join(''):'<div class="empty">当天无日程</div>');}
-
 };
-
-
 
 /* ============================================================
-
    ★ 模块二：客户合集管理（外贸 / 假毛 两大独立列表）
-
 ============================================================ */
-
 const CUST_CFG={
-
   trade:{name:'外贸业务客户',plats:['阿里巴巴','独立站','谷歌','展会','社媒','其他'],
-
     stats:['询单','报价','沟通中','定金','成单'],
-
     fields:[['name','客户名称'],['country','国家/地区'],['contact','联系方式'],['product','产品/询盘内容'],['amount','金额/报价'],['remark','备注']]},
-
   wig:{name:'假毛造型客户',plats:['小红书','抖音','闲鱼','客户介绍'],
-
     stats:['询期','报价','定金','排单','做毛中','尾款','成单'],
-
     fields:[['name','客户昵称'],['contact','联系方式'],['role','角色姓名'],['source','作品出处'],
-
       ['headC','头围(cm)'],['faceL','脸长(cm)'],['browD','眉间距(cm)'],['hairBrow','发际线→眉毛(cm)'],['hairNose','发际线→鼻尖(cm)'],
-
       ['amount','金额/报价'],['remark','备注']]}
-
 };
-
 const Cust={
-
   type:'trade',editId:null,imgs:[],
-
   data(){return Cust.type==='trade'?S.custTrade:S.custWig;},
-
   switchType(t,el){Cust.type=t;document.querySelectorAll('[data-ct]').forEach(x=>x.classList.toggle('act',x.dataset.ct===t));
-
     Cust.editId=null;Cust.imgs=[];Cust.buildFilter();Cust.buildForm();Cust.renderList();
-
     $('tradeNoteCard').style.display=t==='trade'?'block':'none';
-
     $('custListTitle').textContent=CUST_CFG[t].name+'列表';},
-
   buildFilter(){const c=CUST_CFG[Cust.type];
-
     $('custFPlat').innerHTML='<option value="">全部平台</option>'+c.plats.map(p=>`<option>${p}</option>`).join('');
-
     $('custFStat').innerHTML='<option value="">全部状态</option>'+c.stats.map(s=>`<option>${s}</option>`).join('');},
-
   resetFilter(){$('custSearch').value='';$('custFPlat').value='';$('custFStat').value='';Cust.renderList();},
-
   buildForm(cust){const c=CUST_CFG[Cust.type];cust=cust||{};
-
     let html=`<div class="field">来源平台<select id="cf_plat">${c.plats.map(p=>`<option ${cust.plat===p?'selected':''}>${p}</option>`).join('')}</select></div>
-
       <div class="field">状态标签<select id="cf_stat">${c.stats.map(s=>`<option ${cust.stat===s?'selected':''}>${s}</option>`).join('')}</select></div>`;
-
     html+=c.fields.map(([k,label])=>label==='备注'
-
       ?`<div class="field" style="grid-column:1/-1">${label}<textarea id="cf_${k}">${esc(cust[k]||'')}</textarea></div>`
-
       :`<div class="field">${label}<input id="cf_${k}" value="${esc(cust[k]||'')}"></div>`).join('');
-
     $('custForm').innerHTML=html;
-
     $('wigImgArea').style.display=Cust.type==='wig'?'block':'none';
-
     Cust.renderImgs();
-
     $('custDelBtn').style.display=Cust.editId?'inline-block':'none';
-
     $('custFormTitle').textContent=Cust.editId?'编辑客户：'+(cust.name||''):'新增客户';
-
     $('custMeta').textContent=Cust.editId?'　创建于 '+fmtDT(cust.createdAt):'';},
-
   newForm(){Cust.editId=null;Cust.imgs=[];Cust.buildForm();},
-
   edit(id){const cust=Cust.data().find(x=>x.id===id);if(!cust)return;
-
     Cust.editId=id;Cust.imgs=[...(cust.imgs||[])];Cust.buildForm(cust);Cust.renderList();
-
     $('custForm').scrollIntoView({behavior:'smooth'});},
-
   save(){const c=CUST_CFG[Cust.type];const obj={plat:$('cf_plat').value,stat:$('cf_stat').value};
-
     c.fields.forEach(([k])=>obj[k]=$('cf_'+k).value.trim());
-
     if(!obj.name)return alert('请填写客户名称');
-
     if(Cust.type==='wig')obj.imgs=Cust.imgs;
-
     if(Cust.editId){const i=Cust.data().findIndex(x=>x.id===Cust.editId);Object.assign(Cust.data()[i],obj,{updatedAt:Date.now()});}
-
     else Cust.data().push(Object.assign({id:uid(),createdAt:Date.now()},obj));
-
     save();Cust.editId=null;Cust.imgs=[];Cust.buildForm();Cust.renderList();},
-
   del(){if(!Cust.editId||!confirm('确认删除该客户？'))return;
-
     if(Cust.type==='trade')S.custTrade=S.custTrade.filter(x=>x.id!==Cust.editId);
-
     else S.custWig=S.custWig.filter(x=>x.id!==Cust.editId);
-
     save();Cust.editId=null;Cust.imgs=[];Cust.buildForm();Cust.renderList();},
-
   renderImgs(){$('wigImgList').innerHTML=Cust.imgs.map((src,i)=>
-
     `<div style="position:relative"><img class="thumb" src="${src}" onclick="window.open('').document.write('<img src=${src} style=max-width:100%>')">
-
      <span class="del-x" style="position:absolute;top:2px;right:4px;background:#fff;border-radius:4px;padding:0 4px" onclick="Cust.imgs.splice(${i},1);Cust.renderImgs()">✕</span></div>`).join('')||'<span class="muted">暂无图片</span>';},
-
   renderList(){const kw=$('custSearch').value.trim().toLowerCase();
-
     const fp=$('custFPlat').value,fs=$('custFStat').value;const c=CUST_CFG[Cust.type];
-
     /* 全局检索：有关键词时跨两类客户提示 */
-
     let list=[...Cust.data()].sort((a,b)=>b.createdAt-a.createdAt);
-
     if(fp)list=list.filter(x=>x.plat===fp);
-
     if(fs)list=list.filter(x=>x.stat===fs);
-
     if(kw)list=list.filter(x=>JSON.stringify(x).toLowerCase().includes(kw));
-
     let cross='';
-
     if(kw){const other=(Cust.type==='trade'?S.custWig:S.custTrade).filter(x=>JSON.stringify(x).toLowerCase().includes(kw));
-
       if(other.length)cross=`<div class="muted" style="padding:6px 0">另在「${Cust.type==='trade'?'假毛造型':'外贸业务'}客户」中找到 ${other.length} 条匹配，切换分类查看</div>`;}
-
     $('custCount').textContent='共 '+list.length+' 位客户';
-
     const cols=Cust.type==='trade'
-
       ?['客户名称','国家','平台','状态','产品/询盘','创建时间']
-
       :['客户昵称','平台','状态','角色姓名','作品出处','创建时间'];
-
     $('custTable').innerHTML='<thead><tr>'+cols.map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>'+
-
       (list.length?list.map(x=>{
-
         const cells=Cust.type==='trade'
-
           ?[x.name,x.country,x.plat,`<span class="tag">${x.stat||''}</span>`,x.product,fmtDT(x.createdAt)]
-
           :[x.name,x.plat,`<span class="tag">${x.stat||''}</span>`,x.role,x.source,fmtDT(x.createdAt)];
-
         return `<tr class="${x.id===Cust.editId?'sel':''}" onclick="Cust.edit('${x.id}')">`+cells.map(v=>`<td>${typeof v==='string'&&v.startsWith('<')?v:esc(v||'-')}</td>`).join('')+'</tr>';
-
       }).join(''):`<tr><td colspan="6" class="empty">暂无客户</td></tr>`)+'</tbody>'+cross;},
-
   saveNotes(){S.tradeNotes=$('tradeNotes').value;save();}
-
 };
-
 $('wigImgFile').onchange=async e=>{for(const f of e.target.files)Cust.imgs.push(await compressImg(f));e.target.value='';Cust.renderImgs();};
 
-
-
 /* ============================================================
-
    ★ 模块三：账单管理（收支分开、二级分类、月度统计）
-
 ============================================================ */
-
 const BILL_CAT={
-
   '收入':['工资','业务收入','退款','其他收入'],
-
   '生活花销':['早餐','午餐','晚餐','奶茶','零食','日用品','交通','其他'],
-
   '业务支出':['材料采购','物流运费','平台费用','推广费用','设备工具','其他'],
-
   '其他':['人情往来','医疗','其他']
-
 };
-
 const Bill={
-
   ym:todayStr().slice(0,7),
-
   init(){$('billCat1').innerHTML=Object.keys(BILL_CAT).map(c=>`<option>${c}</option>`).join('');
-
     $('billFCat').innerHTML='<option value="">全部分类</option>'+Object.keys(BILL_CAT).map(c=>`<option>${c}</option>`).join('');
-
     Bill.syncCat2();$('billDate').value=todayStr();},
-
   syncCat2(){$('billCat2').innerHTML=BILL_CAT[$('billCat1').value].map(c=>`<option>${c}</option>`).join('');},
-
   add(){const amt=parseFloat($('billAmt').value);if(!amt)return alert('请输入金额');
-
     S.bills.push({id:uid(),cat1:$('billCat1').value,cat2:$('billCat2').value,amt,
-
       date:$('billDate').value||todayStr(),pay:$('billPay').value,note:$('billNote').value.trim(),createdAt:Date.now()});
-
     $('billAmt').value='';$('billNote').value='';save();Bill.render();},
-
   del(id){if(!confirm('删除这笔账单？'))return;S.bills=S.bills.filter(x=>x.id!==id);save();Bill.render();},
-
   moveMonth(d){const[y,m]=Bill.ym.split('-').map(Number);const dt=new Date(y,m-1+d,1);
-
     Bill.ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');Bill.render();},
-
   render(){$('billMonthTitle').textContent=Bill.ym.replace('-',' 年 ')+' 月';
-
     const mb=S.bills.filter(b=>b.date.startsWith(Bill.ym));
-
     const inc=mb.filter(b=>b.cat1==='收入').reduce((s,b)=>s+b.amt,0);
-
     const exp=mb.filter(b=>b.cat1!=='收入').reduce((s,b)=>s+b.amt,0);
-
     $('billSummary').innerHTML=`
-
       <div><div class="muted">收入</div><div style="font-size:22px;color:var(--up)">¥${inc.toFixed(2)}</div></div>
-
       <div><div class="muted">支出</div><div style="font-size:22px;color:var(--down)">¥${exp.toFixed(2)}</div></div>
-
       <div><div class="muted">结余</div><div style="font-size:22px">¥${(inc-exp).toFixed(2)}</div></div>
-
       <div><div class="muted">笔数</div><div style="font-size:22px">${mb.length}</div></div>`;
-
     /* 分类占比条 */
-
     const byCat={};mb.filter(b=>b.cat1!=='收入').forEach(b=>{const k=b.cat1+'·'+b.cat2;byCat[k]=(byCat[k]||0)+b.amt;});
-
     const entries=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
-
     $('billCatStat').innerHTML=entries.map(([k,v])=>`
-
       <div class="row" style="margin-bottom:4px">
-
         <span style="width:130px;font-size:12px">${k}</span>
-
         <div style="flex:1;background:#f0f0f0;border-radius:4px;height:14px"><div style="width:${exp?(v/exp*100).toFixed(1):0}%;background:#333;height:14px;border-radius:4px"></div></div>
-
         <span style="width:90px;text-align:right;font-size:12px">¥${v.toFixed(2)}</span></div>`).join('');
-
     Bill.renderList();},
-
   renderList(){const fc=$('billFCat').value,fp=$('billFPay').value,kw=$('billFKw').value.trim();
-
     let list=[...S.bills].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
-
     if(fc)list=list.filter(b=>b.cat1===fc);if(fp)list=list.filter(b=>b.pay===fp);
-
     if(kw)list=list.filter(b=>(b.note||'').includes(kw)||b.cat2.includes(kw));
-
     $('billTable').innerHTML='<thead><tr><th>日期</th><th>分类</th><th>金额</th><th>付款方式</th><th>备注</th><th>录入时间</th><th></th></tr></thead><tbody>'+
-
       (list.length?list.map(b=>`<tr>
-
         <td>${b.date}</td><td>${b.cat1} / ${b.cat2}</td>
-
         <td style="color:${b.cat1==='收入'?'var(--up)':'var(--down)'}">${b.cat1==='收入'?'+':'-'}¥${b.amt.toFixed(2)}</td>
-
         <td>${b.pay}</td><td>${esc(b.note||'-')}</td><td class="muted">${fmtDT(b.createdAt)}</td>
-
         <td><span class="del-x" onclick="Bill.del('${b.id}')">删</span></td></tr>`).join('')
-
       :'<tr><td colspan="7" class="empty">暂无账单</td></tr>')+'</tbody>';}
-
 };
 
-
-
 /* ============================================================
-
    ★ 模块四：锻炼 & 体重（打卡 + 图片 + 折线图）
-
 ============================================================ */
-
 const Fit={
-
   async add(){const date=$('fitDate').value||todayStr();const content=$('fitContent').value.trim();
-
     const weight=parseFloat($('fitWeight').value)||null;
-
     if(!content&&!weight)return alert('请填写运动内容或体重');
-
     const imgs=[];for(const f of $('fitImg').files)imgs.push(await compressImg(f));
-
     S.workouts.push({id:uid(),date,content,weight,imgs,createdAt:Date.now()});
-
     $('fitContent').value='';$('fitWeight').value='';$('fitImg').value='';
-
     save();Fit.render();},
-
   del(id){if(!confirm('删除该记录？'))return;S.workouts=S.workouts.filter(x=>x.id!==id);save();Fit.render();},
-
   render(){const list=[...S.workouts].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt);
-
     $('fitList').innerHTML=list.length?list.map(w=>`
-
       <div style="border-bottom:1px solid var(--line);padding:10px 0">
-
         <div class="row" style="justify-content:space-between">
-
           <b>${w.date}</b>
-
           <span>${w.weight?`<span class="tag">${w.weight} kg</span>`:''} <span class="del-x" onclick="Fit.del('${w.id}')">删除</span></span>
-
         </div>
-
         <div style="margin:4px 0">${esc(w.content||'')}</div>
-
         <div class="row">${(w.imgs||[]).map(s=>`<img class="thumb" src="${s}" onclick="window.open('').document.write('<img src=${s} style=max-width:100%>')">`).join('')}</div>
-
         <div class="muted">${fmtDT(w.createdAt)}</div>
-
       </div>`).join(''):'<div class="empty">暂无打卡记录</div>';
-
     Fit.chart();},
-
   chart(){const cv=$('fitChart');const ctx=cv.getContext('2d');
-
     const W=cv.width=cv.offsetWidth*2,H=cv.height=480;ctx.scale(1,1);
-
     ctx.clearRect(0,0,W,H);
-
     const pts=S.workouts.filter(w=>w.weight).sort((a,b)=>a.date.localeCompare(b.date)).map(w=>({d:w.date,v:w.weight}));
-
     if(pts.length<1){ctx.fillStyle='#aaa';ctx.font='24px sans-serif';ctx.fillText('录入体重后自动生成趋势图',40,H/2);return;}
-
     const pad=70,vmin=Math.min(...pts.map(p=>p.v))-1,vmax=Math.max(...pts.map(p=>p.v))+1;
-
     const X=i=>pad+(W-pad*2)*(pts.length===1?.5:i/(pts.length-1));
-
     const Y=v=>H-pad-(H-pad*2)*((v-vmin)/(vmax-vmin||1));
-
     ctx.strokeStyle='#eee';ctx.fillStyle='#999';ctx.font='20px sans-serif';
-
     for(let i=0;i<=4;i++){const v=vmin+(vmax-vmin)*i/4,y=Y(v);
-
       ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(W-pad,y);ctx.stroke();ctx.fillText(v.toFixed(1),8,y+6);}
-
     ctx.strokeStyle='#111';ctx.lineWidth=3;ctx.beginPath();
-
     pts.forEach((p,i)=>i?ctx.lineTo(X(i),Y(p.v)):ctx.moveTo(X(0),Y(p.v)));ctx.stroke();
-
     ctx.fillStyle='#111';
-
     pts.forEach((p,i)=>{ctx.beginPath();ctx.arc(X(i),Y(p.v),6,0,7);ctx.fill();
-
       ctx.fillText(p.v,X(i)-18,Y(p.v)-14);
-
       if(pts.length<=12||i%Math.ceil(pts.length/12)===0)ctx.fillText(p.d.slice(5),X(i)-26,H-30);});}
-
 };
 
-
-
 /* ============================================================
-
    ★ 服务端探测：本地代理是否在线（决定网易云 / B站功能可用性）
-
 ============================================================ */
-
 const SRV={on:false,
-
   api(p){return p;},
-
   async detect(){
-
     if(!location.protocol.startsWith('http')){SRV.on=false;SRV.warn();return;}
-
     try{const r=await fetch('/api/ping');const j=await r.json();SRV.on=!!j.ok;}catch(e){SRV.on=false;}
-
     SRV.warn();},
-
   warn(){document.querySelectorAll('.srv-warn').forEach(el=>{
-
     el.innerHTML=SRV.on?'':`<div class="card" style="border-color:#c0392b;background:#fffafa">
-
       <b>⚠ 未连接本地服务，网易云音乐 / 哔哩哔哩功能不可用</b>
-
       <div class="muted" style="margin-top:6px;line-height:1.9">
-
         浏览器的跨域安全策略禁止网页直接访问网易云和 B 站接口，必须通过本地服务中转。<br>
-
         <b>解决办法：</b>双击工作台文件夹里的「<b>启动工作台.bat</b>」，它会自动打开
-
         <b>http://localhost:8848</b>（端口被占用时自动顺延，以黑窗口显示的地址为准），
-
         用这个地址访问工作台即可 —— <b>不要直接双击 html 文件</b>。<br>
-
         其余模块（计划 / 客户 / 账单 / 锻炼 / 文件 / 小工具等）不受影响，当前即可正常使用。
-
       </div></div>`;});}
-
 };
-
-
 
 /* ============================================================
-
    ★ 模块五：音乐播放器（网易云在线 + 歌单 + 收藏）
-
    歌曲对象：{id, title, artist, cover, neid?, url?, local?, fav}
-
    neid 存在 → 走 /api/ne/stream?id= 取流，链接永不过期
-
 ============================================================ */
-
 const Music={
-
   curList:null,curIdx:-1,sessionFiles:{},lyricOn:false,lyric:[],
-
   init(){Music.curList=S.playlists[0].id;Music.renderLists();Music.renderSongs();
-
     const a=$('audio');
-
     a.onended=()=>{if($('musicLoop').checked)Music.next();};
-
     a.onerror=()=>{if(a.src)$('npArtist').textContent='⚠ 播放失败：该曲目可能为 VIP／独家版权，或本地服务未启动';};
-
     a.ontimeupdate=()=>Music.syncLyric();},
-
   list(){return S.playlists.find(p=>p.id===Music.curList)||S.playlists[0];},
-
   addList(){const n=prompt('歌单名称');if(!n)return;S.playlists.push({id:uid(),name:n,songs:[]});save();Music.renderLists();},
-
   delList(){const l=Music.list();if(l.id==='fav')return alert('「我喜欢」歌单不可删除');
-
     if(!confirm('删除歌单「'+l.name+'」？'))return;
-
     S.playlists=S.playlists.filter(p=>p.id!==l.id);Music.curList=S.playlists[0].id;save();Music.renderLists();Music.renderSongs();},
-
   switchList(id){Music.curList=id;Music.curIdx=-1;Music.renderLists();Music.renderSongs();},
-
   /* ---- 网易云：搜索 ---- */
-
   async neSearch(){const kw=$('neKw').value.trim();if(!kw)return;
-
     if(!SRV.on)return alert('请先启动本地服务（双击「启动工作台.bat」）后访问 http://localhost:8848');
-
     $('neMsg').textContent='搜索中…';$('neResult').innerHTML='';
-
     try{const r=await fetch('/api/ne/search?kw='+encodeURIComponent(kw)+'&limit=40');const j=await r.json();
-
       if(!j.ok||!j.songs.length){$('neMsg').textContent='未搜索到结果';return;}
-
       $('neMsg').textContent='找到 '+j.songs.length+' 首，点歌名试听，点 ＋ 加入当前歌单「'+Music.list().name+'」';
-
       Music.renderNe(j.songs);
-
     }catch(e){$('neMsg').textContent='搜索失败：'+e.message;}},
-
   /* ---- 网易云：导入整张歌单 ---- */
-
   async neImport(){const v=$('nePlId').value.trim();if(!v)return;
-
     if(!SRV.on)return alert('请先启动本地服务后访问 http://localhost:8848');
-
     $('neMsg').textContent='导入中…';
-
     try{const r=await fetch('/api/ne/playlist?id='+encodeURIComponent(v));const j=await r.json();
-
       if(!j.ok)return $('neMsg').textContent='导入失败：'+j.msg;
-
       const nl={id:uid(),name:'☁ '+j.name,songs:j.tracks.map(t=>({id:uid(),title:t.title,artist:t.artist,cover:t.cover,neid:t.neid,fav:false}))};
-
       S.playlists.push(nl);save();Music.curList=nl.id;Music.renderLists();Music.renderSongs();
-
       $('neMsg').textContent='✅ 已导入歌单「'+j.name+'」共 '+nl.songs.length+' 首';$('nePlId').value='';
-
     }catch(e){$('neMsg').textContent='导入失败：'+e.message;}},
-
   renderNe(songs){Music._ne=songs;
-
     $('neResult').innerHTML=songs.map((s,i)=>`
-
       <div class="song">
-
         ${s.cover?`<img src="/api/img?url=${encodeURIComponent(s.cover+'?param=60y60')}" style="width:38px;height:38px;border-radius:5px;object-fit:cover">`:''}
-
         <span style="flex:1;min-width:0" onclick="Music.nePlay(${i})">
-
           <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.title)}</div>
-
           <div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.artist)} · ${esc(s.album)}</div>
-
         </span>
-
         <button class="mini ghost" onclick="Music.neAdd(${i})">＋</button>
-
       </div>`).join('');},
-
   nePlay(i){const s=Music._ne[i];Music.playSong({id:'tmp',title:s.title,artist:s.artist,cover:s.cover,neid:s.neid},-1);},
-
   neAdd(i){const s=Music._ne[i];
-
     Music.list().songs.push({id:uid(),title:s.title,artist:s.artist,cover:s.cover,neid:s.neid,fav:false});
-
     save();Music.renderSongs();$('neMsg').textContent='✅ 已添加《'+s.title+'》到「'+Music.list().name+'」';},
-
   /* ---- 播放核心 ---- */
-
   srcOf(s){if(s.local&&Music.sessionFiles[s.id])return Music.sessionFiles[s.id];
-
     if(s.neid)return '/api/ne/stream?id='+s.neid;
-
     if(s.url)return SRV.on?'/api/stream?url='+encodeURIComponent(s.url):s.url;
-
     return '';},
-
   playSong(s,idx){const src=Music.srcOf(s);
-
     if(!src)return alert('该曲目无有效音源');
-
     if(s.neid&&!SRV.on)return alert('网易云歌曲需启动本地服务，请双击「启动工作台.bat」后访问 http://localhost:8848');
-
     Music.curIdx=idx;
-
     $('audio').src=src;$('audio').play().catch(()=>{});
-
     $('npTitle').textContent='▶ '+s.title;
-
     $('npArtist').textContent=(s.artist||'')+(idx>=0?'　·　歌单：'+Music.list().name:'　·　试听');
-
     const c=$('npCover');
-
     if(s.cover){c.src='/api/img?url='+encodeURIComponent(s.cover+'?param=200y200');c.style.display='block';}else c.style.display='none';
-
     Music.loadLyric(s.neid);Music.renderSongs();},
-
   play(i){const s=Music.list().songs[i];if(s)Music.playSong(s,i);},
-
   playAll(){if(Music.list().songs.length)Music.play(0);},
-
   prev(){const n=Music.list().songs.length;if(n)Music.play((Music.curIdx-1+n)%n);},
-
   next(){const n=Music.list().songs.length;if(n)Music.play((Music.curIdx+1)%n);},
-
   /* ---- 歌词 ---- */
-
   toggleLyric(){Music.lyricOn=!Music.lyricOn;$('lyricBox').style.display=Music.lyricOn?'block':'none';},
-
   async loadLyric(neid){Music.lyric=[];if(!neid||!SRV.on){$('lyricBox').innerHTML='<span class="muted">暂无歌词</span>';return;}
-
     try{const r=await fetch('/api/ne/lyric?id='+neid);const j=await r.json();
-
       Music.lyric=(j.lyric||'').split('\n').map(l=>{const m=l.match(/\[(\d+):(\d+)[.:](\d+)\](.*)/);
-
         return m?{t:+m[1]*60+ +m[2]+ +('0.'+m[3]),x:m[4].trim()}:null;}).filter(x=>x&&x.x);
-
       $('lyricBox').innerHTML=Music.lyric.length?Music.lyric.map((l,i)=>`<div id="ly${i}" style="color:#aaa">${esc(l.x)}</div>`).join(''):'<span class="muted">纯音乐或暂无歌词</span>';
-
     }catch(e){$('lyricBox').innerHTML='<span class="muted">歌词加载失败</span>';}},
-
   syncLyric(){if(!Music.lyricOn||!Music.lyric.length)return;
-
     const t=$('audio').currentTime;let idx=-1;
-
     for(let i=0;i<Music.lyric.length;i++)if(Music.lyric[i].t<=t)idx=i;else break;
-
     if(idx===Music._lyIdx)return;Music._lyIdx=idx;
-
     Music.lyric.forEach((l,i)=>{const el=$('ly'+i);if(el)el.style.cssText=i===idx?'color:#111;font-weight:600;font-size:14px':'color:#aaa';});
-
     const cur=$('ly'+idx);if(cur)cur.scrollIntoView({block:'center',behavior:'smooth'});},
-
   /* ---- 手动添加 / 收藏 / 删除 ---- */
-
   addSong(){const n=$('songName').value.trim(),u=$('songUrl').value.trim();
-
     if(!n||!u)return alert('请填写歌名和音频 URL');
-
     Music.list().songs.push({id:uid(),title:n,url:u,artist:'自定义链接',fav:false});
-
     $('songName').value='';$('songUrl').value='';save();Music.renderSongs();},
-
   delSong(i){Music.list().songs.splice(i,1);save();Music.renderSongs();},
-
   toggleFav(i){const s=Music.list().songs[i];s.fav=!s.fav;
-
     const fav=S.playlists.find(p=>p.id==='fav');
-
     const same=x=>(s.neid&&x.neid===s.neid)||(!s.neid&&x.title===s.title);
-
     if(s.fav&&Music.curList!=='fav'&&!fav.songs.some(same))fav.songs.push({...s,id:uid()});
-
     if(!s.fav)fav.songs=fav.songs.filter(x=>!same(x));
-
     save();Music.renderSongs();Music.renderLists();},
-
   renderLists(){$('plList').innerHTML=S.playlists.map(p=>`
-
     <div class="song ${p.id===Music.curList?'playing':''}" onclick="Music.switchList('${p.id}')">
-
       <span style="flex:1">${p.id==='fav'?'❤ ':'🎵 '}${esc(p.name)}</span><span class="muted">${p.songs.length} 首</span></div>`).join('');},
-
   renderSongs(){const l=Music.list();$('songListTitle').textContent='歌曲 · '+l.name;
-
     $('songList').innerHTML=l.songs.length?l.songs.map((s,i)=>`
-
       <div class="song ${i===Music.curIdx?'playing':''}">
-
         <span class="muted" style="width:22px;flex-shrink:0">${i+1}</span>
-
         <span style="flex:1;min-width:0" onclick="Music.play(${i})">
-
           <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.title)}</div>
-
           ${s.artist?`<div class="muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.artist)}</div>`:''}
-
         </span>
-
         <span class="fav" onclick="Music.toggleFav(${i})">${s.fav?'❤':'♡'}</span>
-
         <span class="del-x" onclick="Music.delSong(${i})">✕</span>
-
       </div>`).join(''):'<div class="empty">歌单为空，上方搜索网易云歌曲添加</div>';}
-
 };
-
 $('songFile').onchange=e=>{for(const f of e.target.files){const id=uid();
-
   Music.sessionFiles[id]=URL.createObjectURL(f);
-
   Music.list().songs.push({id,title:f.name.replace(/\.[^.]+$/,''),artist:'本地文件',fav:false,local:true});}
-
   save();Music.renderSongs();e.target.value='';};
 
-
-
 /* ============================================================
-
    ★ 模块六：哔哩哔哩（扫码登录 + 收藏夹 + 内嵌播放）
-
 ============================================================ */
-
 const Bili={
-
   playIdx:-1,mid:null,favPage:1,favCache:[],
-
   async init(){Bili.render();if(SRV.on)await Bili.nav();},
-
   /* ---- 登录态 ---- */
-
   async nav(){try{const j=await(await fetch('/api/bili/nav')).json();
-
     if(j.login){Bili.mid=j.mid;
-
       $('biliAcct').innerHTML=`<img src="/api/img?url=${encodeURIComponent(j.face)}" style="width:30px;height:30px;border-radius:50%">
-
         <b>${esc(j.name)}</b><span class="tag gray">LV${j.level||0}</span>
-
         <button class="mini ghost" onclick="Bili.logout()">退出登录</button>`;
-
       $('biliLoginBox').style.display='none';Bili.loadFolders();
-
     }else{Bili.mid=null;
-
       $('biliAcct').innerHTML='<span class="muted">未登录</span><button class="mini solid" onclick="document.getElementById(\'biliLoginBox\').style.display=\'block\'">扫码登录</button>';
-
       $('biliLoginBox').style.display='block';
-
       $('biliFolder').innerHTML='<option value="">请先登录</option>';}
-
   }catch(e){$('biliAcct').innerHTML='<span class="muted">本地服务未启动</span>';}},
-
   async genQR(){$('qrState').textContent='生成中…';
-
     try{const j=await(await fetch('/api/bili/qr')).json();
-
       if(!j.ok)return $('qrState').textContent='生成失败：'+j.msg;
-
       $('qrLink').href=j.url;$('qrLink').style.display='inline';
-
       const box=$('qrBox');box.innerHTML='';
-
       try{await loadScript('https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@master/qrcode.min.js');}
-
       catch(e){try{await loadScript('https://unpkg.com/qrcodejs@1.0.0/qrcode.min.js');}catch(e2){}}
-
       if(window.QRCode){new QRCode(box,{text:j.url,width:170,height:170,correctLevel:QRCode.CorrectLevel.M});}
-
       else box.innerHTML='<div class="muted" style="padding:10px;text-align:center;font-size:12px">二维码组件加载失败<br>请点右侧链接用手机打开登录</div>';
-
       $('qrState').textContent='请用手机 B 站 App 扫码';
-
       Bili.poll(j.key);
-
     }catch(e){$('qrState').textContent='生成失败：'+e.message;}},
-
   poll(key){clearInterval(Bili.pollIv);let n=0;
-
     Bili.pollIv=setInterval(async()=>{
-
       if(++n>100){clearInterval(Bili.pollIv);$('qrState').textContent='二维码已过期，请重新生成';return;}
-
       try{const j=await(await fetch('/api/bili/poll?key='+encodeURIComponent(key))).json();
-
         $('qrState').textContent=j.msg||'';
-
         if(j.state==='done'){clearInterval(Bili.pollIv);$('qrState').textContent='✅ 登录成功';$('qrBox').innerHTML='<div style="font-size:40px">✅</div>';Bili.nav();}
-
         if(j.state==='expired')clearInterval(Bili.pollIv);
-
       }catch(e){}},2000);},
-
   async setCookie(){const v=$('biliCk').value.trim();if(!v)return;
-
     await fetch('/api/bili/cookie?v='+encodeURIComponent(v));$('biliCk').value='';Bili.nav();},
-
   async logout(){if(!confirm('退出 B 站登录？'))return;await fetch('/api/bili/logout');Bili.nav();
-
     $('biliFavList').innerHTML='';},
-
   /* ---- 收藏夹 ---- */
-
   async loadFolders(){if(!Bili.mid)return;
-
     try{const j=await(await fetch('/api/bili/folders?mid='+Bili.mid)).json();
-
       if(!j.ok)return $('biliFetchMsg').textContent=j.msg;
-
       $('biliFolder').innerHTML=j.list.map(f=>`<option value="${f.id}">${esc(f.title)}（${f.count}）</option>`).join('');
-
       Bili.loadFolder();
-
     }catch(e){$('biliFetchMsg').textContent='读取收藏夹失败：'+e.message;}},
-
   async loadFolder(more){const id=$('biliFolder').value;if(!id)return;
-
     if(!more){Bili.favPage=1;Bili.favCache=[];}else Bili.favPage++;
-
     $('biliFetchMsg').textContent='加载中…';
-
     try{const j=await(await fetch('/api/bili/fav?id='+id+'&pn='+Bili.favPage+'&ps=40')).json();
-
       if(!j.ok)return $('biliFetchMsg').textContent=j.msg;
-
       Bili.favCache=Bili.favCache.concat(j.list);
-
       $('biliFetchMsg').textContent='共 '+Bili.favCache.length+' 个视频';
-
       $('biliMoreBtn').style.display=j.hasMore?'inline-block':'none';
-
       $('biliFavList').innerHTML=Bili.favCache.map((v,i)=>`
-
         <div class="song" onclick="Bili.playBv('${v.bvid}','${esc(v.title).replace(/'/g,'')}')">
-
           <img src="/api/img?url=${encodeURIComponent(v.cover+'@160w_100h')}" style="width:80px;height:50px;object-fit:cover;border-radius:5px;flex-shrink:0">
-
           <span style="flex:1;min-width:0">
-
             <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(v.title)}</div>
-
             <div class="muted">${esc(v.up||'')} · ${Math.floor(v.dur/60)}分${v.dur%60}秒</div>
-
           </span>
-
           <button class="mini ghost" onclick="event.stopPropagation();Bili.saveFav(${i})">收藏到本地</button>
-
         </div>`).join('')||'<div class="empty">该收藏夹为空</div>';
-
     }catch(e){$('biliFetchMsg').textContent='加载失败：'+e.message;}},
-
   saveFav(i){const v=Bili.favCache[i];
-
     if(S.biliVideos.some(x=>x.bvid===v.bvid))return alert('已在本地收藏中');
-
     S.biliVideos.push({bvid:v.bvid,title:v.title,cover:v.cover,up:v.up,createdAt:Date.now()});
-
     save();Bili.render();alert('已加入本地收藏');},
-
   /* ---- 播放 ---- */
-
   playBv(bvid,title){
-
     $('biliFrame').src='//player.bilibili.com/player.html?bvid='+encodeURIComponent(bvid)+'&autoplay=0&high_quality=1&danmaku=0';
-
     $('biliNowTitle').textContent='▶ '+(title||bvid);
-
     $('biliOpenLink').href='https://www.bilibili.com/video/'+bvid;$('biliOpenLink').style.display='inline';
-
     window.scrollTo({top:0});document.querySelector('#page-bili').scrollIntoView({behavior:'smooth'});},
-
   play(i){const v=S.biliVideos[i];if(!v)return;Bili.playIdx=i;Bili.playBv(v.bvid,v.title);Bili.render();},
-
   async addManual(){const bv=$('biliBv').value.trim();
-
     if(!/^BV[0-9A-Za-z]{8,}$/.test(bv))return alert('请输入正确的 BV 号（以 BV 开头）');
-
     if(S.biliVideos.some(x=>x.bvid===bv))return alert('该视频已收藏');
-
     let info={bvid:bv,title:bv};
-
     if(SRV.on){try{const j=await(await fetch('/api/bili/video?bvid='+bv)).json();
-
       if(j.ok)info={bvid:j.bvid,title:j.title,cover:j.cover,up:j.up};}catch(e){}}
-
     S.biliVideos.push(Object.assign(info,{createdAt:Date.now()}));
-
     $('biliBv').value='';save();Bili.render();},
-
   del(i){S.biliVideos.splice(i,1);save();Bili.render();},
-
   render(){$('biliList').innerHTML=S.biliVideos.length?S.biliVideos.map((v,i)=>`
-
     <div class="song ${i===Bili.playIdx?'playing':''}">
-
       ${v.cover?`<img src="/api/img?url=${encodeURIComponent(v.cover+'@160w_100h')}" style="width:74px;height:46px;object-fit:cover;border-radius:5px;flex-shrink:0">`:'<span style="width:74px;text-align:center">📺</span>'}
-
       <span style="flex:1;min-width:0" onclick="Bili.play(${i})">
-
         <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(v.title)}</div>
-
         <div class="muted">${esc(v.up||'')} ${v.bvid}</div>
-
       </span>
-
       <span class="del-x" onclick="Bili.del(${i})">✕</span>
-
     </div>`).join(''):'<div class="empty">暂无本地收藏，可从上方收藏夹「收藏到本地」或手动添加 BV 号</div>';}
-
 };
-
-
 
 /* ============================================================
-
    ★ 模块七：文件导入查看 + 笔记（docx/xlsx/csv/pdf/txt）
-
 ============================================================ */
-
 function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`))return res();
-
   const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
-
 const Files={
-
   curId:null,
-
   async import(fileList){for(const f of fileList){
-
       const id=uid();const buf=await f.arrayBuffer();
-
       await idbPut(id,{name:f.name,type:f.type,data:buf});
-
       S.files.push({id,name:f.name,size:f.size,note:'',createdAt:Date.now()});}
-
     save();Files.render();},
-
   del(id){if(!confirm('删除该文件及其笔记？'))return;
-
     S.files=S.files.filter(x=>x.id!==id);idbDel(id);
-
     if(Files.curId===id)Files.closeView();save();Files.render();},
-
   async view(id){const meta=S.files.find(x=>x.id===id);const rec=await idbGet(id);
-
     if(!rec)return alert('文件内容丢失（可能浏览器数据被清理），请重新导入');
-
     Files.curId=id;$('fileViewCard').style.display='block';
-
     $('fileViewTitle').textContent=meta.name;$('fileNote').value=meta.note||'';
-
     const v=$('fileViewer');v.innerHTML='<div class="muted">解析中…</div>';
-
     const ext=meta.name.split('.').pop().toLowerCase();
-
     try{
-
       if(ext==='docx'){await loadScript('https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js');
-
         const r=await mammoth.convertToHtml({arrayBuffer:rec.data});v.innerHTML=r.value;}
-
       else if(ext==='xlsx'||ext==='xls'||ext==='csv'){await loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
-
         const wb=XLSX.read(rec.data,{type:'array'});
-
         v.innerHTML=wb.SheetNames.map(n=>'<h3>'+esc(n)+'</h3>'+XLSX.utils.sheet_to_html(wb.Sheets[n])).join('');}
-
       else if(ext==='pdf'){const url=URL.createObjectURL(new Blob([rec.data],{type:'application/pdf'}));
-
         v.innerHTML=`<embed src="${url}" style="width:100%;height:440px">`;}
-
       else{const txt=new TextDecoder('utf-8').decode(rec.data);
-
         v.innerHTML='<pre style="white-space:pre-wrap;font-size:13px">'+esc(txt.slice(0,200000))+'</pre>';}
-
     }catch(e){v.innerHTML='<div class="empty">解析失败：'+esc(e.message)+'（在线解析库需联网加载）</div>';}
-
     $('fileViewCard').scrollIntoView({behavior:'smooth'});},
-
   saveNote(){const meta=S.files.find(x=>x.id===Files.curId);if(!meta)return;
-
     meta.note=$('fileNote').value;save();Files.render();alert('笔记已保存');},
-
   closeView(){Files.curId=null;$('fileViewCard').style.display='none';$('fileViewer').innerHTML='';},
-
   render(){const list=[...S.files].sort((a,b)=>b.createdAt-a.createdAt);
-
     $('fileTable').innerHTML='<thead><tr><th>文件名</th><th>大小</th><th>导入时间</th><th>笔记</th><th></th></tr></thead><tbody>'+
-
       (list.length?list.map(f=>`<tr>
-
         <td onclick="Files.view('${f.id}')">📄 ${esc(f.name)}</td>
-
         <td>${(f.size/1024).toFixed(0)} KB</td>
-
         <td class="muted">${fmtDT(f.createdAt)}</td>
-
         <td class="muted">${esc((f.note||'').slice(0,30))||'-'}</td>
-
         <td><span class="del-x" onclick="Files.del('${f.id}')">删</span></td></tr>`).join('')
-
       :'<tr><td colspan="5" class="empty">暂无文件，从上方导入</td></tr>')+'</tbody>';}
-
 };
-
 $('fileInput').onchange=e=>{Files.import(e.target.files);e.target.value='';};
 
-
-
 /* ============================================================
-
    ★ 模块八：小工具（备忘录 / 计时器 / 计算器）
-
 ============================================================ */
-
 const Tool={
-
   addMemo(){const t=$('memoInput').value.trim();if(!t)return;
-
     S.memos.unshift({id:uid(),text:t,createdAt:Date.now()});$('memoInput').value='';save();Tool.renderMemos();},
-
   delMemo(id){S.memos=S.memos.filter(m=>m.id!==id);save();Tool.renderMemos();},
-
   renderMemos(){$('memoList').innerHTML=S.memos.length?S.memos.map(m=>`
-
     <div class="memo">${esc(m.text)}
-
       <div class="row" style="justify-content:space-between;margin-top:6px">
-
         <span class="muted">${fmtDT(m.createdAt)}</span>
-
         <span class="del-x" onclick="Tool.delMemo('${m.id}')">删除</span></div></div>`).join('')
-
     :'<div class="empty">暂无备忘</div>';},
-
   /* 计时器：正计时 + 倒计时 */
-
   tmSec:0,tmDir:1,tmIv:null,
-
   tmShow(){const s=Math.max(0,Tool.tmSec);
-
     $('tmDisplay').textContent=[s/3600,s/60%60,s%60].map(x=>String(Math.floor(x)).padStart(2,'0')).join(':');},
-
   tmStart(){if(Tool.tmIv)return;Tool.tmIv=setInterval(()=>{Tool.tmSec+=Tool.tmDir;
-
     if(Tool.tmDir<0&&Tool.tmSec<=0){Tool.tmPause();Tool.tmSec=0;alert('⏰ 倒计时结束！');}Tool.tmShow();},1000);},
-
   tmPause(){clearInterval(Tool.tmIv);Tool.tmIv=null;},
-
   tmReset(){Tool.tmPause();Tool.tmSec=0;Tool.tmDir=1;Tool.tmShow();},
-
   tmCountdown(){const m=parseFloat($('tmCd').value);if(!m)return;Tool.tmPause();Tool.tmSec=Math.round(m*60);Tool.tmDir=-1;Tool.tmShow();Tool.tmStart();},
-
   calc(){try{const exp=$('calcExp').value.replace(/[^0-9+\-*/().%\s]/g,'');
-
     $('calcOut').textContent=Function('"use strict";return ('+exp+')')();}catch(e){$('calcOut').textContent='表达式错误';}}
-
 };
 
-
-
 /* ============================================================
-
    ★ 模块九：专注模式（选任务 + 倒计时 + 时钟）
-
 ============================================================ */
-
 const Focus={
-
   iv:null,left:0,taskId:null,
-
   open(){$('focusOverlay').classList.add('act');
-
     const undone=S.plans.filter(p=>!p.done);
-
     $('fTaskSel').innerHTML=undone.length?undone.map(p=>`<option value="${p.id}">[${TYPE_TXT[p.type]}] ${esc(p.title)}</option>`).join(''):'<option value="">（暂无未完成任务，可直接专注）</option>';
-
     Focus.clockIv=setInterval(()=>{$('fClock').textContent=new Date().toLocaleString('zh-CN',{weekday:'long',year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'});},500);},
-
   start(){Focus.taskId=$('fTaskSel').value||null;
-
     const p=S.plans.find(x=>x.id===Focus.taskId);
-
     $('fTask').textContent=p?'🎯 '+p.title:'🎯 自由专注';
-
     Focus.left=parseInt($('fDur').value)*60;Focus.show();
-
     $('fSetup').style.display='none';$('fRunning').style.display='flex';
-
     Focus.iv=setInterval(()=>{Focus.left--;Focus.show();
-
       if(Focus.left<=0){Focus.stopTimer();$('fTask').textContent='✅ 专注完成！休息一下吧';}},1000);},
-
   show(){const m=Math.floor(Focus.left/60),s=Focus.left%60;
-
     $('fTimer').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');},
-
   done(){if(Focus.taskId){const p=S.plans.find(x=>x.id===Focus.taskId);if(p){p.done=true;save();Plan.render();Cal.render();}}
-
     Focus.stop();},
-
   stopTimer(){clearInterval(Focus.iv);Focus.iv=null;},
-
   stop(){Focus.stopTimer();$('fSetup').style.display='flex';$('fRunning').style.display='none';
-
     $('fTimer').textContent='25:00';$('fTask').textContent='选择一个任务开始专注';},
-
   close(){Focus.stop();clearInterval(Focus.clockIv);$('focusOverlay').classList.remove('act');}
-
 };
-
-
 
 /* ============================================================
-
    ★ AI 全局智能检索（关键词分词 + 相关度排序 + 跳转）
-
 ============================================================ */
-
 const AI={
-
   search(q){q=q.trim().toLowerCase();if(!q)return[];
-
     const kws=q.split(/\s+/).filter(Boolean);
-
     const score=txt=>{txt=(txt||'').toLowerCase();let s=0;
-
       kws.forEach(k=>{if(txt.includes(k))s+=k.length*2;});
-
       if(txt.includes(q))s+=q.length*3;return s;};
-
     const out=[];
-
     const push=(cat,page,label,txt)=>{const s=score(txt);if(s>0)out.push({cat,page,label,s});};
-
     S.plans.forEach(p=>push('📅 计划','plan',`[${TYPE_TXT[p.type]}] ${p.title} · ${p.date} · ${p.done?'已完成':'未完成'}`,p.title+' '+p.date+' '+p.type));
-
     S.custTrade.forEach(c=>push('👥 外贸客户','customer',`${c.name} · ${c.plat||''} · ${c.stat||''} · ${c.product||''}`,Object.values(c).join(' ')));
-
     S.custWig.forEach(c=>push('👥 假毛客户','customer',`${c.name} · ${c.plat||''} · ${c.stat||''} · ${c.role||''} ${c.source||''}`,Object.values(c).join(' ')));
-
     S.bills.forEach(b=>push('💰 账单','bill',`${b.date} ${b.cat1}/${b.cat2} ¥${b.amt} ${b.note||''}`,b.cat1+' '+b.cat2+' '+b.note+' '+b.date+' '+b.pay));
-
     S.workouts.forEach(w=>push('🏃 运动','fit',`${w.date} ${w.content||''} ${w.weight?w.weight+'kg':''}`,w.content+' '+w.date));
-
     S.memos.forEach(m=>push('📝 备忘','tool',m.text.slice(0,50),m.text));
-
     S.files.forEach(f=>push('📄 文件','file',f.name+'（笔记：'+(f.note||'无')+'）',f.name+' '+f.note));
-
     S.biliVideos.forEach(v=>push('📺 视频','bili',v.title,v.title+' '+v.bvid));
-
     S.playlists.forEach(pl=>pl.songs.forEach(s=>push('🎵 音乐','music',s.title+' · '+pl.name,s.title)));
-
     if(S.tradeNotes)push('📌 外贸注意事项','customer',S.tradeNotes.slice(0,60),S.tradeNotes);
-
     return out.sort((a,b)=>b.s-a.s).slice(0,40);}
-
 };
-
 let gTimer;
-
 $('gInput').oninput=()=>{clearTimeout(gTimer);gTimer=setTimeout(()=>{
-
   const q=$('gInput').value;const box=$('gResult');
-
   if(!q.trim()){box.style.display='none';return;}
-
   const rs=AI.search(q);
-
   if(!rs.length){box.innerHTML='<div class="gr-item">未找到相关内容</div>';box.style.display='block';return;}
-
   let html='',lastCat='';
-
   rs.forEach(r=>{if(r.cat!==lastCat){html+=`<div class="gr-cat">${r.cat}</div>`;lastCat=r.cat;}
-
     const kw=q.trim().split(/\s+/)[0];
-
     html+=`<div class="gr-item" onclick="go('${r.page}');document.getElementById('gResult').style.display='none'">${esc(r.label).replace(new RegExp(esc(kw).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>'<mark>'+m+'</mark>')}</div>`;});
-
   box.innerHTML=html;box.style.display='block';},200);};
-
 document.addEventListener('click',e=>{if(!$('gSearch').contains(e.target))$('gResult').style.display='none';});
 
-
-
 /* ============================================================
-
    ★ 数据导入导出
-
 ============================================================ */
-
 const Store={
-
   exportAll(){const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
-
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-
     a.download='工作台备份_'+todayStr()+'.json';a.click();},
-
   clearAll(){if(!confirm('⚠ 将清空全部数据（计划/客户/账单/运动/歌单等）！确定吗？'))return;
-
     if(!confirm('再次确认：数据无法恢复，建议先导出备份。仍要清空？'))return;
-
     localStorage.removeItem(KEY);S=load();location.reload();}
-
 };
-
 $('importFile').onchange=e=>{const f=e.target.files[0];if(!f)return;
-
   const r=new FileReader();r.onload=ev=>{try{
-
     const d=JSON.parse(ev.target.result);
-
     if(!confirm('导入将覆盖当前全部数据，确定？'))return;
-
     S=Object.assign(structuredClone(DEF),d);save();location.reload();
-
   }catch(err){alert('文件格式错误，导入失败');}};r.readAsText(f);e.target.value='';};
 
-
-
 /* ============================================================
-
    ★ 云端同步层（Supabase · 跨设备互通）
-
    原理：所有数据序列化为一个快照，按登录账号存一张表；
-
         改动后防抖上传，启动/切回前台/每 30s 自动下载最新。
-
         冲突策略：最后保存者胜出（个人工具足够，详见 README）。
-
 ============================================================ */
-
 const Sync={
-
   client:null, user:null, lastPull:0, pending:false, cfgOK:false, _t:null,
-
   init(){
-
     const c=window.SYNC_CONFIG||{};
-
     const urlOk=c.SUPABASE_URL&&!/YOUR_|your_/.test(c.SUPABASE_URL);
-
     const keyOk=c.SUPABASE_ANON_KEY&&!/YOUR_|your_/.test(c.SUPABASE_ANON_KEY);
-
     if(!urlOk||!keyOk){
-
       $('syncCfgTip').textContent='⚠ 尚未配置 Supabase：打开同目录的 sync-config.js，填入 SUPABASE_URL 与 SUPABASE_ANON_KEY（步骤见 README）。配置前数据仅存本机。';
-
       $('syncStatus').textContent='未配置（仅本机存储）';
-
       return;
-
     }
-
     this.cfgOK=true;
-
-    /* 让 Supabase 的所有 HTTP 请求走同源 /api/sb 代理，避免客户端直连 supabase.co（大陆被墙）导致 Failed to fetch */
-
+    /* Supabase 连接策略：优先浏览器直连（实测国内可直连 supabase.co），
+       直连失败时自动回退到同源 /api/sb 代理（仅带后端的部署才有）。
+       这样纯静态托管（如 GitHub Pages）也能正常同步。 */
     const SB_HOST=c.SUPABASE_URL;
-
-    const sbFetch=(input,init)=>{
-
-      let url=(typeof input==='string')?input:(input&&input.url)||'';
-
-      if(SB_HOST&&url.startsWith(SB_HOST)) url='/api/sb'+url.slice(SB_HOST.length);
-
-      return fetch(url,init);
-
+    let sbMode=localStorage.getItem('sb_mode')||'direct';
+    const setMode=(m)=>{ sbMode=m; try{localStorage.setItem('sb_mode',m);}catch(e){} };
+    const viaProxy=async(path,init)=>{
+      const r=await fetch('/api/sb'+path,init);
+      if(r.status===404) throw new Error('no proxy');   /* 静态托管无 /api，返回 404 页面 */
+      return r;
     };
-
+    const sbFetch=async(input,init)=>{
+      const raw=(typeof input==='string')?input:(input&&input.url)||'';
+      if(!SB_HOST||!raw.startsWith(SB_HOST)) return fetch(input,init);
+      const path=raw.slice(SB_HOST.length);
+      if(sbMode==='proxy'){
+        try{ return await viaProxy(path,init); }
+        catch(e){ setMode('direct'); return fetch(raw,init); }
+      }
+      try{ return await fetch(raw,init); }
+      catch(e){
+        try{ const r=await viaProxy(path,init); setMode('proxy'); return r; }
+        catch(e2){ throw e; }
+      }
+    };
     try{
-
       this.client=window.supabase.createClient(c.SUPABASE_URL,c.SUPABASE_ANON_KEY,{fetch:sbFetch, global:{fetch:sbFetch}, realtime:{disabled:true}});
-
       try{ if(this.client.realtime&&this.client.realtime.disconnect) this.client.realtime.disconnect(); }catch(e){}
-
     }
-
     catch(e){ $('syncCfgTip').textContent='Supabase 初始化失败：'+e.message; return; }
-
     _syncHook=()=>this.push();                       /* 接管 save() 的自动上传 */
-
     this.client.auth.getSession().then(({data})=>{ if(data.session){this.user=data.session.user;this.afterLogin(true);} });
-
     document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'&&this.user)this.pullNow(); });
-
     setInterval(()=>{ if(this.user)this.pullNow(); },30000);
-
     $('syncStatus').textContent='已连接 Supabase，未登录';
-
   },
-
   afterLogin(silent){
-
     $('syncLogin').style.display='none'; $('syncOn').style.display='block';
-
     $('syncStatus').textContent='已登录：'+this.user.email+' · 同步已开启';
-
     this.pullNow();
-
     if(!silent)alert('登录成功，数据将自动在多设备间同步。');
-
   },
-
   async login(){
-
     if(!this.cfgOK) return alert('请先在 sync-config.js 配置 Supabase（见 README）。');
-
     const email=$('syncEmail').value.trim(), pwd=$('syncPwd').value;
-
     if(!email||!pwd) return alert('请填写邮箱和密码');
-
     $('syncStatus').textContent='登录中…';
-
     try{
-
       let r=await this.client.auth.signInWithPassword({email,password:pwd});
-
       if(r.error) return this._fail('登录失败', r.error);
-
       this.user=r.data.user; this.afterLogin(false);
-
     }catch(e){ this._netfail(e); }
-
   },
-
   async signup(){
-
     if(!this.cfgOK) return alert('请先在 sync-config.js 配置 Supabase（见 README）。');
-
     const email=$('syncEmail').value.trim(), pwd=$('syncPwd').value;
-
     if(!email||!pwd) return alert('请填写邮箱和密码');
-
     if(pwd.length<6) return alert('密码至少 6 位');
-
     $('syncStatus').textContent='注册中…';
-
     try{
-
       let s=await this.client.auth.signUp({email,password:pwd});
-
       if(s.error) return this._fail('注册失败', s.error);
-
       if(s.data.session){ this.user=s.data.user; this.afterLogin(false); return; }  /* 关闭邮箱验证时直接登录 */
-
       alert('已为你创建同步账号。若后台开启了邮箱验证，请先去邮箱点确认链接，再用同一账号「登录」。');
-
       $('syncStatus').textContent='注册成功，请验证邮箱后登录（如已开启验证）';
-
     }catch(e){ this._netfail(e); }
-
   },
-
   async testConn(){
-
     if(!this.cfgOK) return alert('请先配置 Supabase（见 README）。');
-
     const box=$('syncTest'); if(box) box.textContent='测试中…';
-
+    const cfg=window.SYNC_CONFIG||{};
+    const H={'apikey':cfg.SUPABASE_ANON_KEY||''};
+    let out='';
     try{
-
-      const cfg=window.SYNC_CONFIG||{};
-
-      const r=await fetch('/api/sb/auth/v1/settings',{headers:{'apikey':cfg.SUPABASE_ANON_KEY||''}});
-
-      const t=await r.text();
-
-      if(box){
-
-        if(r.status<400) box.textContent='连接结果：HTTP '+r.status+' ✅ 云端代理正常，可正常登录/注册';
-
-        else box.textContent='连接结果：HTTP '+r.status+' ⚠ '+t.slice(0,160)+' [诊断] https://workspace-eight-roan.vercel.app/api/sb-diagnose';
-
-      }
-
-      console.log('[sync] /api/sb/auth/v1/settings →', r.status, t);
-
+      const r=await fetch(cfg.SUPABASE_URL+'/auth/v1/settings',{headers:H});
+      out=(r.status<400)
+        ? '连接结果：HTTP '+r.status+' ✅ 直连云端正常，可登录/注册'
+        : '连接结果：HTTP '+r.status+' ⚠ '+(await r.text()).slice(0,120);
     }catch(e){
-
-      if(box) box.textContent='连接失败：'+e.message+'（浏览器连不上 /api/sb 代理，可访问上面的诊断链接看原因）';
-
-      console.error('[sync] testConn error', e);
-
-    }
-
-  },
-
-  _fail(what, err){
-
-    console.error('[sync]', what, err);
-
-    let msg=(err&&err.message)||String(err);
-
-    if(/fetch|network|abort|load/i.test(msg)) msg='网络错误：连不上云端代理（'+msg+'）';
-
-    $('syncStatus').textContent=what+'：'+msg;
-
-    alert(what+'：'+msg);
-
-  },
-
-  _netfail(e){
-
-    console.error('[sync] network error', e);
-
-    let msg=(e&&e.message)||String(e);
-
-    $('syncStatus').textContent='连接失败：'+msg+'（点「测试连接」排查）';
-
-    alert('连接云端失败：'+msg+'\n\n可点「测试连接」看具体原因并截图发我。');
-
-  },
-
-  async logout(){
-
-    if(this.client) await this.client.auth.signOut();
-
-    this.user=null; this.lastPull=0;
-
-    $('syncLogin').style.display='block'; $('syncOn').style.display='none';
-
-    $('syncStatus').textContent='已退出（数据仍留本机）';
-
-  },
-
-  async pullNow(){
-
-    if(!this.user) return;
-
-    const {data,error}=await this.client.from('wb_snapshot').select('data,updated_at').eq('uid',this.user.id).maybeSingle();
-
-    if(error){ console.warn('[sync] pull error',error.message); return; }
-
-    if(!data||!data.data) return;
-
-    const remoteTs=new Date(data.updated_at).getTime();
-
-    if(remoteTs<=this.lastPull) return;            /* 无更新则跳过 */
-
-    S=Object.assign(structuredClone(DEF),data.data);
-
-    try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
-
-    this.lastPull=remoteTs; renderAll();
-
-    $('syncStatus').textContent='已登录：'+this.user.email+' · 已同步（'+new Date(remoteTs).toLocaleTimeString('zh-CN')+'）';
-
-  },
-
-  push(){
-
-    if(!this.user) return;
-
-    this.pending=true; clearTimeout(this._t);
-
-    this._t=setTimeout(()=>this.pushNow(),1500);    /* 防抖：连续改动只上传一次 */
-
-  },
-
-  async pushNow(){
-
-    if(!this.user||!this.pending) return; this.pending=false;
-
-    const snap=JSON.parse(JSON.stringify(S));
-
-    const {error}=await this.client.from('wb_snapshot').upsert({uid:this.user.id,data:snap,updated_at:new Date().toISOString()});
-
-    if(error){ console.warn('[sync] push error',error.message); return; }
-
-    this.lastPull=Date.now();
-
-    $('syncStatus').textContent='已登录：'+this.user.email+' · 已上传（'+new Date().toLocaleTimeString('zh-CN')+'）';
-
-  }
-
-};
-
-/* ============================================================
-
-   ★ 本地文件同步（导出/导入 JSON，不依赖网络代理）
-
-============================================================ */
-
-const FileSync={
-
-  export(){
-
-    const data={};
-
-    for(let i=0;i<localStorage.length;i++){
-
-      const k=localStorage.key(i);
-
-      if(!k) continue;
-
-      try{ data[k]=localStorage.getItem(k); }catch(e){}
-
-    }
-
-    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-
-    const url=URL.createObjectURL(blob);
-
-    const a=document.createElement('a');
-
-    a.href=url;
-
-    a.download='极简业务工作台备份_'+new Date().toISOString().slice(0,10)+'.json';
-
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-
-    URL.revokeObjectURL(url);
-
-    const box=$("fileSyncMsg"); if(box) box.textContent="✅ 已导出，请把下载的 JSON 文件发到另一台设备导入";
-
-  },
-
-  import(){ $("fileImport").click(); },
-
-  onFile(input){
-
-    const box=$("fileSyncMsg"); if(box) box.textContent="";
-
-    const file=input.files&&input.files[0];
-
-    if(!file) return;
-
-    const reader=new FileReader();
-
-    reader.onload=(e)=>{
-
       try{
-
-        const data=JSON.parse(e.target.result);
-
-        if(!data||typeof data!=='object') throw new Error('文件内容不是有效的 JSON 对象');
-
-        let count=0;
-
-        for(const k in data){
-
-          if(!Object.prototype.hasOwnProperty.call(data,k)) continue;
-
-          try{ localStorage.setItem(k,data[k]); count++; }catch(err){ console.warn("skip",k,err); }
-
-        }
-
-        if(box) box.textContent="✅ 已导入 "+count+" 条数据，页面即将刷新…";
-
-        setTimeout(()=>location.reload(),800);
-
-      }catch(err){
-
-        if(box) box.textContent="❌ 导入失败："+err.message;
-
-      }
-
-    };
-
-    reader.onerror=()=>{ if(box) box.textContent="❌ 无法读取文件"; };
-
-    reader.readAsText(file);
-
-    input.value='';
-
+        const r2=await fetch('/api/sb/auth/v1/settings',{headers:H});
+        out=(r2.status<400&&r2.status!==404)
+          ? '连接结果：HTTP '+r2.status+' ✅ 经服务器代理可用'
+          : '连接失败 ❌ 直连不通，代理也异常（HTTP '+r2.status+'）';
+      }catch(e2){ out='连接失败 ❌ 直连与代理均不可用：'+e.message; }
+    }
+    if(box) box.textContent=out;
+    console.log('[sync] testConn →', out);
+  },
+  _fail(what, err){
+    console.error('[sync]', what, err);
+    let msg=(err&&err.message)||String(err);
+    if(/fetch|network|abort|load/i.test(msg)) msg='网络错误：连不上云端代理（'+msg+'）';
+    $('syncStatus').textContent=what+'：'+msg;
+    alert(what+'：'+msg);
+  },
+  _netfail(e){
+    console.error('[sync] network error', e);
+    let msg=(e&&e.message)||String(e);
+    $('syncStatus').textContent='连接失败：'+msg+'（点「测试连接」排查）';
+    alert('连接云端失败：'+msg+'\n\n可点「测试连接」看具体原因并截图发我。');
+  },
+  async logout(){
+    if(this.client) await this.client.auth.signOut();
+    this.user=null; this.lastPull=0;
+    $('syncLogin').style.display='block'; $('syncOn').style.display='none';
+    $('syncStatus').textContent='已退出（数据仍留本机）';
+  },
+  async pullNow(){
+    if(!this.user) return;
+    const {data,error}=await this.client.from('wb_snapshot').select('data,updated_at').eq('uid',this.user.id).maybeSingle();
+    if(error){ console.warn('[sync] pull error',error.message); return; }
+    if(!data||!data.data) return;
+    const remoteTs=new Date(data.updated_at).getTime();
+    if(remoteTs<=this.lastPull) return;            /* 无更新则跳过 */
+    S=Object.assign(structuredClone(DEF),data.data);
+    try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){}
+    this.lastPull=remoteTs; renderAll();
+    $('syncStatus').textContent='已登录：'+this.user.email+' · 已同步（'+new Date(remoteTs).toLocaleTimeString('zh-CN')+'）';
+  },
+  push(){
+    if(!this.user) return;
+    this.pending=true; clearTimeout(this._t);
+    this._t=setTimeout(()=>this.pushNow(),1500);    /* 防抖：连续改动只上传一次 */
+  },
+  async pushNow(){
+    if(!this.user||!this.pending) return; this.pending=false;
+    const snap=JSON.parse(JSON.stringify(S));
+    const {error}=await this.client.from('wb_snapshot').upsert({uid:this.user.id,data:snap,updated_at:new Date().toISOString()});
+    if(error){ console.warn('[sync] push error',error.message); return; }
+    this.lastPull=Date.now();
+    $('syncStatus').textContent='已登录：'+this.user.email+' · 已上传（'+new Date().toLocaleTimeString('zh-CN')+'）';
   }
-
 };
-
+/* ============================================================
+   ★ 本地文件同步（导出/导入 JSON，不依赖网络代理）
+============================================================ */
+const FileSync={
+  export(){
+    const data={};
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(!k) continue;
+      try{ data[k]=localStorage.getItem(k); }catch(e){}
+    }
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='极简业务工作台备份_'+new Date().toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    const box=$("fileSyncMsg"); if(box) box.textContent="✅ 已导出，请把下载的 JSON 文件发到另一台设备导入";
+  },
+  import(){ $("fileImport").click(); },
+  onFile(input){
+    const box=$("fileSyncMsg"); if(box) box.textContent="";
+    const file=input.files&&input.files[0];
+    if(!file) return;
+    const reader=new FileReader();
+    reader.onload=(e)=>{
+      try{
+        const data=JSON.parse(e.target.result);
+        if(!data||typeof data!=='object') throw new Error('文件内容不是有效的 JSON 对象');
+        let count=0;
+        for(const k in data){
+          if(!Object.prototype.hasOwnProperty.call(data,k)) continue;
+          try{ localStorage.setItem(k,data[k]); count++; }catch(err){ console.warn("skip",k,err); }
+        }
+        if(box) box.textContent="✅ 已导入 "+count+" 条数据，页面即将刷新…";
+        setTimeout(()=>location.reload(),800);
+      }catch(err){
+        if(box) box.textContent="❌ 导入失败："+err.message;
+      }
+    };
+    reader.onerror=()=>{ if(box) box.textContent="❌ 无法读取文件"; };
+    reader.readAsText(file);
+    input.value='';
+  }
+};
 /* 拉取远端数据后整体重渲染（供 Sync 调用，也便于手动刷新） */
-
 function renderAll(){
-
   Plan.render();Cal.render();
-
   Cust.buildFilter();Cust.buildForm();Cust.renderList();
-
   Bill.init();Bill.render();
-
   Fit.render();
-
   if(typeof Music!=='undefined')Music.init();
-
   if(typeof Bili!=='undefined')Bili.render();
-
   Files.render();
-
   Tool.renderMemos();Tool.tmShow();
-
   updateStoreInfo();
-
 }
 
-
-
 /* ============================================================
-
    ★ 初始化
-
 ============================================================ */
-
 window.addEventListener('resize',()=>Fit.chart());
-
 (async function init(){
-
   $('planDate').value=todayStr();$('fitDate').value=todayStr();
-
   $('tradeNotes').value=S.tradeNotes||'';
-
   Plan.render();Cal.render();
-
   Cust.buildFilter();Cust.buildForm();Cust.renderList();
-
   Bill.init();Bill.render();
-
   Fit.render();
-
   Music.init();
-
   Files.render();
-
   Tool.renderMemos();Tool.tmShow();
-
   updateStoreInfo();
-
   await SRV.detect();   /* 探测本地代理服务 */
-
   Bili.init();
-
   Sync.init();        /* 初始化云端同步（未配置则自动跳过） */
-
   if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{}); /* PWA 离线缓存 */
-
 })();
-
 </script>
-
 </body>
-
 </html>
-
