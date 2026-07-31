@@ -542,7 +542,7 @@ const json = (res, obj, code = 200) => {
 
 
 
-const SB_ORIGIN = 'https://toyiugcylrxtvspgblcf.supabase.co';
+const SB_ORIGIN = 'https://toyiuqcylrxtvspgblcf.supabase.co';
 
 
 
