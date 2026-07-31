@@ -1132,6 +1132,26 @@ canvas.chart{width:100%;height:240px;background:#fff}
 
       <div class="card">
 
+        <h2>📁 本地文件同步（不翻墙）</h2>
+
+        <div class="muted" style="margin:6px 0">无需任何代理/账号：导出数据文件，通过微信、邮件、U盘传到另一台设备，再导入即可。</div>
+
+        <div class="row" style="margin-top:6px">
+
+          <button class="mini solid" onclick="FileSync.export()">⬇️ 导出数据</button>
+
+          <button class="mini ghost" onclick="FileSync.import()">⬆️ 导入数据</button>
+
+          <input id="fileImport" type="file" accept=".json,application/json" style="display:none" onchange="FileSync.onFile(this)">
+
+        </div>
+
+        <div id="fileSyncMsg" class="muted" style="margin-top:6px"></div>
+
+      </div>
+
+      <div class="card">
+
         <h2>启动方式</h2>
 
         <div class="muted" style="line-height:2">
@@ -2809,6 +2829,98 @@ const Sync={
     this.lastPull=Date.now();
 
     $('syncStatus').textContent='已登录：'+this.user.email+' · 已上传（'+new Date().toLocaleTimeString('zh-CN')+'）';
+
+  }
+
+};
+
+/* ============================================================
+
+   ★ 本地文件同步（导出/导入 JSON，不依赖网络代理）
+
+============================================================ */
+
+const FileSync={
+
+  export(){
+
+    const data={};
+
+    for(let i=0;i<localStorage.length;i++){
+
+      const k=localStorage.key(i);
+
+      if(!k) continue;
+
+      try{ data[k]=localStorage.getItem(k); }catch(e){}
+
+    }
+
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+
+    const url=URL.createObjectURL(blob);
+
+    const a=document.createElement('a');
+
+    a.href=url;
+
+    a.download='极简业务工作台备份_'+new Date().toISOString().slice(0,10)+'.json';
+
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+
+    const box=$("fileSyncMsg"); if(box) box.textContent="✅ 已导出，请把下载的 JSON 文件发到另一台设备导入";
+
+  },
+
+  import(){ $("fileImport").click(); },
+
+  onFile(input){
+
+    const box=$("fileSyncMsg"); if(box) box.textContent="";
+
+    const file=input.files&&input.files[0];
+
+    if(!file) return;
+
+    const reader=new FileReader();
+
+    reader.onload=(e)=>{
+
+      try{
+
+        const data=JSON.parse(e.target.result);
+
+        if(!data||typeof data!=='object') throw new Error('文件内容不是有效的 JSON 对象');
+
+        let count=0;
+
+        for(const k in data){
+
+          if(!Object.prototype.hasOwnProperty.call(data,k)) continue;
+
+          try{ localStorage.setItem(k,data[k]); count++; }catch(err){ console.warn("skip",k,err); }
+
+        }
+
+        if(box) box.textContent="✅ 已导入 "+count+" 条数据，页面即将刷新…";
+
+        setTimeout(()=>location.reload(),800);
+
+      }catch(err){
+
+        if(box) box.textContent="❌ 导入失败："+err.message;
+
+      }
+
+    };
+
+    reader.onerror=()=>{ if(box) box.textContent="❌ 无法读取文件"; };
+
+    reader.readAsText(file);
+
+    input.value='';
 
   }
 
