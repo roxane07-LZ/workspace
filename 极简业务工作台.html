@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icon.svg">
 <!-- Supabase（跨设备云同步，CDN 引入，无需打包） + 用户配置（填入你的 Supabase 密钥） -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="sync-config.js?v=2"></script>
+<script src="sync-config.js"></script>
 <!-- ============================================================
   极简业务工作台 · 单文件应用
   结构说明（方便自行修改）：
@@ -1290,7 +1290,17 @@ const Sync={
       return;
     }
     this.cfgOK=true;
-    try{ this.client=window.supabase.createClient(c.SUPABASE_URL,c.SUPABASE_ANON_KEY); }
+    /* 让 Supabase 的所有 HTTP 请求走同源 /api/sb 代理，避免客户端直连 supabase.co（大陆被墙）导致 Failed to fetch */
+    const SB_HOST=c.SUPABASE_URL;
+    const sbFetch=(input,init)=>{
+      let url=(typeof input==='string')?input:(input&&input.url)||'';
+      if(SB_HOST&&url.startsWith(SB_HOST)) url='/api/sb'+url.slice(SB_HOST.length);
+      return fetch(url,init);
+    };
+    try{
+      this.client=window.supabase.createClient(c.SUPABASE_URL,c.SUPABASE_ANON_KEY,{fetch:sbFetch});
+      try{ if(this.client.realtime&&this.client.realtime.disconnect) this.client.realtime.disconnect(); }catch(e){}
+    }
     catch(e){ $('syncCfgTip').textContent='Supabase 初始化失败：'+e.message; return; }
     _syncHook=()=>this.push();                       /* 接管 save() 的自动上传 */
     this.client.auth.getSession().then(({data})=>{ if(data.session){this.user=data.session.user;this.afterLogin(true);} });
