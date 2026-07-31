@@ -545,9 +545,14 @@ canvas.chart{width:100%;height:240px;background:#fff}
           <div class="row">
             <input id="syncEmail" placeholder="同步账号邮箱" style="flex:1" type="email" autocomplete="email">
             <input id="syncPwd" placeholder="密码" style="flex:1" type="password" autocomplete="current-password">
-            <button class="mini solid" onclick="Sync.login()">登录 / 注册</button>
           </div>
-          <div class="muted" style="margin-top:6px">手机和电脑用<b>同一个账号</b>登录，数据自动互通。首次使用即自动注册（建议关闭邮箱验证，详见 README）。</div>
+          <div class="row" style="margin-top:6px">
+            <button class="mini solid" onclick="Sync.login()">登录</button>
+            <button class="mini ghost" onclick="Sync.signup()">注册新账号</button>
+            <button class="mini ghost" onclick="Sync.testConn()" title="测试能否连上云端代理">测试连接</button>
+          </div>
+          <div class="muted" style="margin-top:6px">手机和电脑用<b>同一个账号</b>登录，数据自动互通。已有账号点「登录」；第一次用点「注册新账号」（密码至少 6 位）。</div>
+          <div id="syncTest" class="muted" style="margin-top:4px"></div>
         </div>
         <div id="syncOn" style="display:none">
           <div class="row">
@@ -1318,18 +1323,52 @@ const Sync={
     if(!this.cfgOK) return alert('请先在 sync-config.js 配置 Supabase（见 README）。');
     const email=$('syncEmail').value.trim(), pwd=$('syncPwd').value;
     if(!email||!pwd) return alert('请填写邮箱和密码');
-    let r=await this.client.auth.signInWithPassword({email,password:pwd});
-    if(r.error){
-      if(/Invalid|not found|Email not confirmed|credentials/.test(r.error.message)){
-        const s=await this.client.auth.signUp({email,password:pwd});   /* 首次自动注册 */
-        if(s.error) return alert('注册失败：'+s.error.message);
-        if(s.data.session){ this.user=s.data.user; this.afterLogin(false); return; }  /* 关闭邮箱验证时直接登录 */
-        alert('已为你创建同步账号（若后台开启邮箱验证，请先去邮箱点确认链接，再用同一账号登录）。');
-        return;
-      }
-      return alert('登录失败：'+r.error.message);
+    $('syncStatus').textContent='登录中…';
+    try{
+      let r=await this.client.auth.signInWithPassword({email,password:pwd});
+      if(r.error) return this._fail('登录失败', r.error);
+      this.user=r.data.user; this.afterLogin(false);
+    }catch(e){ this._netfail(e); }
+  },
+  async signup(){
+    if(!this.cfgOK) return alert('请先在 sync-config.js 配置 Supabase（见 README）。');
+    const email=$('syncEmail').value.trim(), pwd=$('syncPwd').value;
+    if(!email||!pwd) return alert('请填写邮箱和密码');
+    if(pwd.length<6) return alert('密码至少 6 位');
+    $('syncStatus').textContent='注册中…';
+    try{
+      let s=await this.client.auth.signUp({email,password:pwd});
+      if(s.error) return this._fail('注册失败', s.error);
+      if(s.data.session){ this.user=s.data.user; this.afterLogin(false); return; }  /* 关闭邮箱验证时直接登录 */
+      alert('已为你创建同步账号。若后台开启了邮箱验证，请先去邮箱点确认链接，再用同一账号「登录」。');
+      $('syncStatus').textContent='注册成功，请验证邮箱后登录（如已开启验证）';
+    }catch(e){ this._netfail(e); }
+  },
+  async testConn(){
+    if(!this.cfgOK) return alert('请先配置 Supabase（见 README）。');
+    const box=$('syncTest'); if(box) box.textContent='测试中…';
+    try{
+      const r=await fetch('/api/sb/auth/v1/settings');
+      const t=await r.text();
+      if(box) box.textContent='连接结果：HTTP '+r.status+(r.status<400?' ✅ 云端代理正常，可正常登录/注册':' ⚠ 代理返回异常（见控制台）');
+      console.log('[sync] /api/sb/auth/v1/settings →', r.status, t);
+    }catch(e){
+      if(box) box.textContent='连接失败：'+e.message+'（说明浏览器连不上 /api/sb 代理，多半是部署未更新或网络问题）';
+      console.error('[sync] testConn error', e);
     }
-    this.user=r.data.user; this.afterLogin(false);
+  },
+  _fail(what, err){
+    console.error('[sync]', what, err);
+    let msg=(err&&err.message)||String(err);
+    if(/fetch|network|abort|load/i.test(msg)) msg='网络错误：连不上云端代理（'+msg+'）';
+    $('syncStatus').textContent=what+'：'+msg;
+    alert(what+'：'+msg);
+  },
+  _netfail(e){
+    console.error('[sync] network error', e);
+    let msg=(e&&e.message)||String(e);
+    $('syncStatus').textContent='连接失败：'+msg+'（点「测试连接」排查）';
+    alert('连接云端失败：'+msg+'\n\n可点「测试连接」看具体原因并截图发我。');
   },
   async logout(){
     if(this.client) await this.client.auth.signOut();
