@@ -8,7 +8,7 @@
    5. 保存本文件，重新打开工作台
 ============================================================ */
 window.SYNC_CONFIG = {
-  SUPABASE_URL:      'https://toyiugcylrxtvspgblcf.supabase.co',
+  SUPABASE_URL:      'https://toyiuqcylrxtvspgblcf.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRveWl1cWN5bHJ4dHZzcGdibGNmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0NzEyMzEsImV4cCI6MjEwMTA0NzIzMX0.Qenww2lEZFJLMxhlOCdFyv179ujAjWhtMQ6h8iqBY60',
 
   /* 代理地址（PROXY_URL）
