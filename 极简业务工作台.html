@@ -115,10 +115,14 @@ tbody tr:hover td{background:#f7f7f7}
 /* ===== 日历 ===== */
 #calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .cal-head{text-align:center;color:var(--sub);font-size:12px;padding:4px 0}
-.cal-cell{min-height:86px;border:1px solid var(--line);border-radius:8px;padding:5px 6px;background:#fff;font-size:12px;cursor:pointer}
+.cal-cell{min-height:86px;border:1px solid var(--line);border-radius:8px;padding:5px 6px;background:#fff;font-size:12px;cursor:pointer;position:relative;transition:border-color .1s,background .1s}
+.cal-cell:hover{border-color:var(--ink);background:#fafafa}
 .cal-cell.dim{opacity:.35}
+.cal-cell.dim:hover{opacity:.6}
 .cal-cell.today{border-color:var(--ink);border-width:2px}
 .cal-cell .d{font-weight:600;margin-bottom:3px}
+.cal-cell .cal-add{display:none;position:absolute;bottom:4px;right:4px;color:var(--sub);font-size:11px}
+.cal-cell:hover .cal-add{display:block}
 .cal-item{border-radius:4px;padding:1px 4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:#f0f0f0}
 .cal-item.w{background:#e2e2e2}
 .cal-item.m{background:#d2d2d2}
@@ -741,12 +745,14 @@ const Cal={
       const dim=d.getMonth()!==Cal.m;
       const items=S.plans.filter(p=>{
         if(p.type==='day')return p.date===ds;
-        if(p.type==='week'){const[s,e]=Cal.weekRange(p.date);return d>=s&&d<=e&&((d.getDay()+6)%7===0||p.date===ds);}
+        if(p.type==='week'){const[s,e]=Cal.weekRange(p.date);return d>=s&&d<=e;}
         return false;});
+      const emptyHint=(!dim&&items.length===0)?`<div class="cal-add">+ 添加</div>`:'';
       html+=`<div class="cal-cell ${dim?'dim':''} ${ds===tStr?'today':''}" onclick="Cal.showDay('${ds}')">
         <div class="d">${d.getDate()}</div>
         ${items.slice(0,3).map(p=>`<div class="cal-item ${p.type==='week'?'w':''} ${p.done?'done':''}">${TYPE_TXT[p.type]}·${esc(p.title)}</div>`).join('')}
-        ${items.length>3?`<div class="muted">+${items.length-3}</div>`:''}</div>`;}
+        ${items.length>3?`<div class="muted">+${items.length-3}</div>`:''}
+        ${emptyHint}</div>`;}
     $('calGrid').innerHTML=html;},
   showDay(ds){const d=new Date(ds+'T00:00:00');
     const items=S.plans.filter(p=>{
@@ -754,6 +760,7 @@ const Cal={
       if(p.type==='week'){const[s,e]=Cal.weekRange(p.date);return d>=s&&d<=e;}
       if(p.type==='month'){const pd=new Date(p.date+'T00:00:00');return pd.getFullYear()===d.getFullYear()&&pd.getMonth()===d.getMonth();}
       return false;});
+    requestAnimationFrame(()=>{const el=$('calDayDetail');if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});});
     $('calDayDetail').innerHTML=`<b>${ds} 日程（${items.length}）</b>`+(items.length?items.map(p=>`
       <div class="row" style="border-bottom:1px solid var(--line);padding:6px 0">
         <span class="tag ${p.done?'gray':''}">${TYPE_TXT[p.type]}</span>
