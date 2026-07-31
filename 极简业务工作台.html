@@ -1298,7 +1298,7 @@ const Sync={
       return fetch(url,init);
     };
     try{
-      this.client=window.supabase.createClient(c.SUPABASE_URL,c.SUPABASE_ANON_KEY,{fetch:sbFetch});
+      this.client=window.supabase.createClient(c.SUPABASE_URL,c.SUPABASE_ANON_KEY,{fetch:sbFetch, global:{fetch:sbFetch}, realtime:{disabled:true}});
       try{ if(this.client.realtime&&this.client.realtime.disconnect) this.client.realtime.disconnect(); }catch(e){}
     }
     catch(e){ $('syncCfgTip').textContent='Supabase 初始化失败：'+e.message; return; }
