@@ -67,24 +67,33 @@ const json = (res, obj, code = 200) => {
 
 /* ---------- Supabase 代理：客户端只连同源 vercel.app，由 Vercel 服务端连 supabase.co ---------- */
 const SB_ORIGIN = 'https://toyiugcylrxtvspgblcf.supabase.co';
-function sbProxy(req, res, target) {
-  let tu;
-  try { tu = new URL(target); } catch (e) { res.writeHead(400); return res.end('URL 无效'); }
-  const mod = tu.protocol === 'http:' ? http : https;
-  const head = Object.assign({}, req.headers);
-  delete head['host']; delete head['Host'];
-  head['user-agent'] = UA;
-  const r = mod.request({
-    hostname: tu.hostname, port: tu.port || 443,
-    path: tu.pathname + tu.search, method: req.method, headers: head
-  }, resp => {
-    const h = { 'Access-Control-Allow-Origin': '*' };
-    ['content-type', 'content-length', 'cache-control', 'etag'].forEach(k => { if (resp.headers[k]) h[k] = resp.headers[k]; });
-    res.writeHead(resp.statusCode, h);
-    resp.pipe(res);
-  });
-  r.on('error', e => { if (!res.headersSent) res.writeHead(502); res.end('sb proxy error: ' + e.message); });
-  req.pipe(r);
+async function sbProxy(req, res, target) {
+  try {
+    const method = req.method || 'GET';
+    let body;
+    if (method !== 'GET' && method !== 'HEAD') {
+      const chunks = [];
+      for await (const ch of req) chunks.push(ch);
+      body = Buffer.concat(chunks);
+    }
+    const headers = {};
+    for (const k of Object.keys(req.headers)) {
+      if (/^host$/i.test(k)) continue;          /* 由服务端重新计算 */
+      const v = req.headers[k];
+      headers[k] = Array.isArray(v) ? v[0] : v;
+    }
+    headers['user-agent'] = UA;
+    const upstream = await fetch(target, { method, headers, body, redirect: 'follow' });
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    const out = { 'Access-Control-Allow-Origin': '*' };
+    const ct = upstream.headers.get('content-type'); if (ct) out['content-type'] = ct;
+    const cl = upstream.headers.get('content-length'); if (cl) out['content-length'] = cl;
+    res.writeHead(upstream.status, out);
+    res.end(buf);
+  } catch (e) {
+    if (!res.headersSent) res.writeHead(502, { 'content-type': 'text/plain; charset=utf-8' });
+    res.end('sb proxy error: ' + (e && e.message ? e.message : e));
+  }
 }
 
 const BI_HEAD = () => ({ 'User-Agent': UA, Referer: 'https://www.bilibili.com/', Origin: 'https://www.bilibili.com', Cookie: biliCookie });
