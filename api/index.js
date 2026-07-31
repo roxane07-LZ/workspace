@@ -65,6 +65,28 @@ const json = (res, obj, code = 200) => {
   res.end(JSON.stringify(obj));
 };
 
+/* ---------- Supabase 代理：客户端只连同源 vercel.app，由 Vercel 服务端连 supabase.co ---------- */
+const SB_ORIGIN = 'https://toyiugcylrxtvspgblcf.supabase.co';
+function sbProxy(req, res, target) {
+  let tu;
+  try { tu = new URL(target); } catch (e) { res.writeHead(400); return res.end('URL 无效'); }
+  const mod = tu.protocol === 'http:' ? http : https;
+  const head = Object.assign({}, req.headers);
+  delete head['host']; delete head['Host'];
+  head['user-agent'] = UA;
+  const r = mod.request({
+    hostname: tu.hostname, port: tu.port || 443,
+    path: tu.pathname + tu.search, method: req.method, headers: head
+  }, resp => {
+    const h = { 'Access-Control-Allow-Origin': '*' };
+    ['content-type', 'content-length', 'cache-control', 'etag'].forEach(k => { if (resp.headers[k]) h[k] = resp.headers[k]; });
+    res.writeHead(resp.statusCode, h);
+    resp.pipe(res);
+  });
+  r.on('error', e => { if (!res.headersSent) res.writeHead(502); res.end('sb proxy error: ' + e.message); });
+  req.pipe(r);
+}
+
 const BI_HEAD = () => ({ 'User-Agent': UA, Referer: 'https://www.bilibili.com/', Origin: 'https://www.bilibili.com', Cookie: biliCookie });
 
 /* ============================================================
@@ -217,6 +239,13 @@ async function route(req, res, u) {
   if (p === '/api/stream') {
     const t = q.get('url'); if (!t) { res.writeHead(400); return res.end(); }
     return pipeProxy(t, req, res, {});
+  }
+
+  /* ========== Supabase 代理（绕过大陆直连 supabase.co 被墙） ========== */
+  if (p === '/api/sb' || p.startsWith('/api/sb/')) {
+    const rest = (p.slice('/api/sb'.length) || '/');
+    const target = SB_ORIGIN + rest + (u.search || '');
+    return sbProxy(req, res, target);
   }
 
   if (p === '/api/ping') return json(res, { ok: true, ver: 1, bili: !!biliCookie });
